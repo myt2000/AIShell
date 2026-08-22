@@ -32,6 +32,7 @@ export const builtinPlugins = [
     'tabby-plugin-manager',
     'tabby-linkifier',
     'tabby-auto-sudo-password',
+    'tabby-aishell', // AISHELL: 模板/批量命令/AI 助手插件
 ]
 
 export const packagesWithDocs = [

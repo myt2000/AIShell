@@ -1,6 +1,7 @@
 import { Component, HostBinding, HostListener, Input } from '@angular/core'
 import { TranslateService } from '@ngx-translate/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
+import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop'
 import deepClone from 'clone-deep'
 import FuzzySearch from 'fuzzy-search'
 
@@ -17,6 +18,18 @@ interface CollapsableProfileGroup extends ProfileGroup {
     children: PartialProfileGroup<CollapsableProfileGroup>[]
 }
 
+// AISHELL: 拖拽目标/拖拽项携带的数据
+interface TreeDragTargetData {
+    kind: 'group-header' | 'profiles' | 'root'
+    group?: PartialProfileGroup<CollapsableProfileGroup>
+}
+
+interface TreeDragItemData {
+    kind: 'profile' | 'group'
+    profile?: PartialProfile<Profile>
+    group?: PartialProfileGroup<CollapsableProfileGroup>
+}
+
 /** @hidden */
 @Component({
     selector: 'profile-tree',
@@ -29,6 +42,12 @@ export class ProfileTreeComponent extends BaseComponent {
 
     filteredProfiles: PartialProfile<Profile>[] = []
     @Input() filter = ''
+
+    // AISHELL: 多选状态
+    selection = new Set<string>()
+    private selectionAnchor: string|null = null
+    private visibleProfileIds: string[] = []
+    isDragging = false
 
 
     panelMinWidth = 200
@@ -78,6 +97,7 @@ export class ProfileTreeComponent extends BaseComponent {
         groups.sort((a, b) => (a.id === 'ungrouped' ? 0 : 1) - (b.id === 'ungrouped' ? 0 : 1))
         this.profileGroups = groups.map(g => ProfileTreeComponent.intoPartialCollapsableProfileGroup(g, profileGroupCollapsed[g.id] ?? false))
         this.rootGroups = this.profilesService.buildGroupTree(this.profileGroups)
+        this.rebuildVisibleProfileIds()
     }
 
     private async editProfile (profile: PartialProfile<Profile>): Promise<void> {
@@ -104,7 +124,6 @@ export class ProfileTreeComponent extends BaseComponent {
 
     private async editProfileGroup (group: PartialProfileGroup<CollapsableProfileGroup>): Promise<void> {
         const { EditProfileGroupModalComponent } = window['nodeRequire']('tabby-settings')
-
         const modal = this.ngbModal.open(
             EditProfileGroupModalComponent,
             { size: 'lg' },
@@ -129,7 +148,6 @@ export class ProfileTreeComponent extends BaseComponent {
 
     private async editProfileGroupDefaults (group: PartialProfileGroup<CollapsableProfileGroup>, provider: ProfileProvider<Profile>): Promise<void> {
         const { EditProfileModalComponent } = window['nodeRequire']('tabby-settings')
-
         const modal = this.ngbModal.open(
             EditProfileModalComponent,
             { size: 'lg' },
@@ -156,8 +174,287 @@ export class ProfileTreeComponent extends BaseComponent {
         return this.editProfileGroup(group)
     }
 
+    // AISHELL: ===== 多选 =====
+
+    get selectionCount (): number {
+        return this.selection.size
+    }
+
+    isSelected (profile: PartialProfile<Profile>): boolean {
+        return this.selection.has(profile.id ?? '')
+    }
+
+    /** 当前选中的 profiles（按树数据解析，保持顺序无关） */
+    getSelectedProfiles (): PartialProfile<Profile>[] {
+        const result: PartialProfile<Profile>[] = []
+        const walk = (groups: PartialProfileGroup<CollapsableProfileGroup>[]) => {
+            for (const group of groups) {
+                for (const p of group.profiles ?? []) {
+                    if (this.selection.has(p.id ?? '')) {
+                        result.push(p)
+                    }
+                }
+                walk((group as any).children ?? [])
+            }
+        }
+        walk(this.rootGroups as any)
+        return result
+    }
+
+    onProfileClick (profile: PartialProfile<Profile>, event: MouseEvent): void {
+        const id = profile.id ?? ''
+        if (event.ctrlKey || event.metaKey) {
+            if (this.selection.has(id)) {
+                this.selection.delete(id)
+            } else {
+                this.selection.add(id)
+            }
+            this.selectionAnchor = id
+        } else if (event.shiftKey && this.selectionAnchor) {
+            const from = this.visibleProfileIds.indexOf(this.selectionAnchor)
+            const to = this.visibleProfileIds.indexOf(id)
+            if (from !== -1 && to !== -1) {
+                for (const pid of this.visibleProfileIds.slice(Math.min(from, to), Math.max(from, to) + 1)) {
+                    this.selection.add(pid)
+                }
+            } else {
+                this.selection.add(id)
+                this.selectionAnchor = id
+            }
+        } else {
+            this.selection.clear()
+            this.selection.add(id)
+            this.selectionAnchor = id
+        }
+    }
+
+    clearSelection (): void {
+        this.selection.clear()
+        this.selectionAnchor = null
+    }
+
+    @HostListener('document:keydown', ['$event'])
+    onDocumentKeydown (event: KeyboardEvent): void {
+        if (event.key === 'Escape' && this.selection.size > 0) {
+            this.clearSelection()
+        }
+    }
+
+    private rebuildVisibleProfileIds (): void {
+        const ids: string[] = []
+        const walk = (groups: PartialProfileGroup<CollapsableProfileGroup>[]) => {
+            for (const group of groups) {
+                for (const p of group.profiles ?? []) {
+                    if (p.id) { ids.push(p.id) }
+                }
+                if (!(group as CollapsableProfileGroup).collapsed) {
+                    walk((group as any).children ?? [])
+                }
+            }
+        }
+        walk(this.rootGroups as any)
+        this.visibleProfileIds = ids
+        // 清理已消失的选中项
+        for (const id of [...this.selection]) {
+            if (!ids.includes(id)) {
+                this.selection.delete(id)
+            }
+        }
+    }
+
+    /** 递归收集分组树下的全部 profiles（不含模板/黑名单，树数据已过滤） */
+    private collectGroupProfilesRecursively (group: PartialProfileGroup<CollapsableProfileGroup>): PartialProfile<Profile>[] {
+        const result: PartialProfile<Profile>[] = [...(group.profiles ?? [])]
+        for (const child of (group as any).children ?? []) {
+            result.push(...this.collectGroupProfilesRecursively(child))
+        }
+        return result
+    }
+
+    // AISHELL: ===== 批量操作 =====
+
+    private groupMoveMenuItems (): { label: string, click: () => void }[] {
+        const items: { label: string, click: () => void }[] = [
+            { label: this.translate.instant('Ungrouped'), click: () => this.moveSelectionToGroup(null) },
+        ]
+        for (const group of this.profileGroups) {
+            if (!group.editable) { continue }
+            const path = this.profilesService.resolveProfileGroupPath(group.id).join(' / ')
+            items.push({ label: path, click: () => this.moveSelectionToGroup(group.id) })
+        }
+        return items
+    }
+
+    async batchConnect (): Promise<void> {
+        await this.launchProfiles(this.getSelectedProfiles())
+    }
+
+    private async launchProfiles (profiles: PartialProfile<Profile>[]): Promise<void> {
+        for (const profile of profiles) {
+            await this.profilesService.launchProfile(profile)
+        }
+    }
+
+    async batchMoveMenu (): Promise<void> {
+        this.platform.popupContextMenu([
+            { type: 'submenu', label: this.translate.instant('Move to group'), submenu: this.groupMoveMenuItems() },
+        ])
+    }
+
+    async moveSelectionToGroup (groupId: string|null): Promise<void> {
+        const selected = this.getSelectedProfiles()
+        if (!selected.length) { return }
+        await this.profilesService.bulkMoveProfiles(selected, groupId)
+        await this.config.save()
+    }
+
+    async batchDuplicate (): Promise<void> {
+        const selected = this.getSelectedProfiles()
+        if (!selected.length) { return }
+        await this.profilesService.duplicateProfiles(selected)
+        await this.config.save()
+    }
+
+    async batchDelete (): Promise<void> {
+        const selected = this.getSelectedProfiles()
+        if (!selected.length) { return }
+        const result = await this.platform.showMessageBox({
+            type: 'warning',
+            message: this.translate.instant('Delete {n} profiles?', { n: selected.length }),
+            detail: selected.map(p => p.name).slice(0, 10).join('\n') + (selected.length > 10 ? '\n…' : ''),
+            buttons: [
+                this.translate.instant('Delete'),
+                this.translate.instant('Cancel'),
+            ],
+            defaultId: 1,
+            cancelId: 1,
+        })
+        if (result.response !== 0) { return }
+        const ids = new Set(selected.map(p => p.id))
+        await this.profilesService.bulkDeleteProfiles(p => ids.has(p.id))
+        this.clearSelection()
+        await this.config.save()
+    }
+
+    // AISHELL: ===== 拖拽 =====
+
+    private isGroupDescendantOf (candidateId: string, ancestorId: string): boolean {
+        let currentId: string|undefined = candidateId
+        let depth = 0
+        while (currentId && depth <= 30) {
+            if (currentId === ancestorId) { return true }
+            const group = this.profilesService.resolveProfileGroup(currentId)
+            if (!group) { return false }
+            currentId = group.parentGroupId
+            depth++
+        }
+        return false
+    }
+
+    /** cdkDropList enterPredicate：限制可放置的目标 */
+    canDropItem (item: CdkDrag, container: CdkDropList): boolean {
+        const data = item.data as TreeDragItemData
+        const target = container.data as TreeDragTargetData
+        if (!data || !target) { return false }
+        const targetEditable = target.group?.editable ?? false
+
+        if (data.kind === 'profile') {
+            if (target.kind === 'root') { return true }
+            if (target.kind === 'group-header') {
+                return targetEditable || target.group?.id === 'ungrouped'
+            }
+            if (target.kind === 'profiles') {
+                return target.group?.id !== 'built-in' && target.group?.id !== 'search'
+            }
+            return false
+        }
+        if (data.kind === 'group') {
+            if (target.kind === 'root') { return true }
+            if (target.kind === 'group-header' && targetEditable && data.group) {
+                // 不能拖到自身或自己的子孙分组
+                return target.group!.id !== data.group.id &&
+                    !this.isGroupDescendantOf(target.group!.id, data.group.id)
+            }
+            return false
+        }
+        return false
+    }
+
+    onDragStarted (): void {
+        this.isDragging = true
+    }
+
+    onDragEnded (): void {
+        this.isDragging = false
+    }
+
+    async onTreeDrop (event: CdkDragDrop<TreeDragTargetData>): Promise<void> {
+        const item = event.item.data as TreeDragItemData
+        const target = event.container.data as TreeDragTargetData
+        if (!item || !target) { return }
+
+        if (item.kind === 'profile' && item.profile) {
+            let targetGroupId: string|null = null
+            if (target.kind === 'group-header' || target.kind === 'profiles') {
+                targetGroupId = target.group?.id === 'ungrouped' || target.group?.id === 'built-in' ? null : (target.group?.id ?? null)
+            }
+            // 拖拽的 profile 在选中集内 → 整批移动
+            const moving = this.selection.has(item.profile.id ?? '') ? this.getSelectedProfiles() : [item.profile]
+            if (moving.length === 0) { return }
+            if (moving.every(p => (p.group ?? null) === targetGroupId)) { return }
+            await this.profilesService.bulkMoveProfiles(moving, targetGroupId)
+            await this.config.save()
+        } else if (item.kind === 'group' && item.group) {
+            const groupCopy: any = deepClone(item.group)
+            delete groupCopy.collapsed
+            delete groupCopy.children
+            delete groupCopy.profiles
+            if (target.kind === 'root') {
+                groupCopy.parentGroupId = undefined
+            } else if (target.kind === 'group-header' && target.group) {
+                if (!this.canDropItem({ data: item } as CdkDrag, { data: target } as CdkDropList)) { return }
+                groupCopy.parentGroupId = target.group.id
+            } else {
+                return
+            }
+            await this.profilesService.writeProfileGroup(groupCopy)
+            await this.config.save()
+        }
+    }
+
+    // AISHELL: ===== 右键菜单（含批量项） =====
+
     async profileContextMenu (profile: PartialProfile<Profile>, event: MouseEvent): Promise<void> {
         event.preventDefault()
+
+        // 该 profile 在选中集内且有多选 → 显示批量菜单
+        if (this.selection.size > 1 && this.selection.has(profile.id ?? '')) {
+            const n = this.selection.size
+            this.platform.popupContextMenu([
+                {
+                    type: 'normal',
+                    label: this.translate.instant('Connect selected ({n})', { n }),
+                    click: () => this.batchConnect(),
+                },
+                {
+                    type: 'submenu',
+                    label: this.translate.instant('Move to group'),
+                    submenu: this.groupMoveMenuItems(),
+                },
+                {
+                    type: 'normal',
+                    label: this.translate.instant('Duplicate selected'),
+                    click: () => this.batchDuplicate(),
+                },
+                {
+                    type: 'normal',
+                    label: this.translate.instant('Delete selected'),
+                    click: () => this.batchDelete(),
+                },
+                { type: 'separator' },
+            ])
+            return
+        }
 
         this.platform.popupContextMenu([
             {
@@ -176,7 +473,27 @@ export class ProfileTreeComponent extends BaseComponent {
 
     async groupContextMenu (group: PartialProfileGroup<CollapsableProfileGroup>, event: MouseEvent): Promise<void> {
         event.preventDefault()
+
+        const groupProfiles = this.collectGroupProfilesRecursively(group)
+
         this.platform.popupContextMenu([
+            {
+                type: 'normal',
+                label: this.translate.instant('Connect all in group'),
+                click: () => this.launchProfiles(groupProfiles),
+                enabled: groupProfiles.length > 0,
+            },
+            {
+                type: 'normal',
+                label: this.translate.instant('Select all in group'),
+                click: () => {
+                    for (const p of groupProfiles) {
+                        if (p.id) { this.selection.add(p.id) }
+                    }
+                },
+                enabled: groupProfiles.length > 0,
+            },
+            { type: 'separator' },
             {
                 type: 'normal',
                 label: group.collapsed ? this.translate.instant('Expand group') : this.translate.instant('Collapse group'),
@@ -205,6 +522,7 @@ export class ProfileTreeComponent extends BaseComponent {
 
             if (q.length === 0) {
                 this.rootGroups = this.profilesService.buildGroupTree(this.profileGroups)
+                this.rebuildVisibleProfileIds()
                 return
             }
 
@@ -228,6 +546,7 @@ export class ProfileTreeComponent extends BaseComponent {
                     profiles: matches,
                 },
             ]
+            this.rebuildVisibleProfileIds()
         } catch (error) {
             console.error('Error occurred during search:', error)
         }
@@ -269,6 +588,7 @@ export class ProfileTreeComponent extends BaseComponent {
     toggleGroupCollapse (group: PartialProfileGroup<CollapsableProfileGroup>): void {
         group.collapsed = !group.collapsed
         this.saveProfileGroupCollapse(group)
+        this.rebuildVisibleProfileIds()
     }
 
     private saveProfileGroupCollapse (group: PartialProfileGroup<CollapsableProfileGroup>): void {

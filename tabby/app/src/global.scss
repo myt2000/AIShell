@@ -199,3 +199,15 @@ ngb-typeahead-window {
         forced-color-adjust: none;
     }
 }
+
+/* AISHELL: 服务器树拖拽预览（预览元素挂在 body 下，需全局样式） */
+.aishell-tree-drag-preview {
+    background-color: var(--theme-bg) !important;
+    color: var(--theme-bg-fg) !important;
+    border-radius: .3rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .35);
+    padding: .15rem .4rem;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}

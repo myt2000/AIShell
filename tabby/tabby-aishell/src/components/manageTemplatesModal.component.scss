@@ -1,0 +1,7 @@
+.modal-content {
+    min-width: 560px;
+
+    .vars-editor textarea {
+        font-family: var(--terminal-font-family, monospace);
+    }
+}

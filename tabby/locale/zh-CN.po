@@ -2579,3 +2579,292 @@ msgstr "缩小"
 msgctxt "[Dynamic] port forwarding"
 msgid "id.port-forwarding.dynamic"
 msgstr "动态端口转发"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Selected: {n}"
+msgstr "已选 {n} 台"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Connect selected"
+msgstr "连接所选服务器"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Connect selected ({n})"
+msgstr "连接所选的 {n} 台服务器"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Move to group"
+msgstr "移动到分组"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Duplicate selected"
+msgstr "复制所选"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Delete selected"
+msgstr "删除所选"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Clear selection"
+msgstr "取消选择"
+
+#: tabby-core/src/components/profileTree.component.pug
+msgid "Drop here to move to top level"
+msgstr "拖放到此处移到顶层"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Connect all in group"
+msgstr "连接分组内全部服务器"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Select all in group"
+msgstr "全选分组内服务器"
+
+#: tabby-core/src/services/profiles.service.ts
+msgid "Delete {n} profiles?"
+msgstr "确定删除 {n} 个连接配置？"
+
+#: tabby-terminal/src/components/loginScriptsSettings.component.pug
+msgid "Variables in Send: $SERVER_NAME, $SERVER_IP, $SERVER_HOST, $SERVER_PORT, $SERVER_USER and template variables are replaced automatically."
+msgstr "发送列支持变量：$SERVER_NAME、$SERVER_IP、$SERVER_HOST、$SERVER_PORT、$SERVER_USER 及模板自定义变量会自动替换。"
+
+#: tabby-aishell/src/commands.ts
+msgid "New from template"
+msgstr "从模板新建"
+
+#: tabby-aishell/src/commands.ts
+msgid "Batch commands"
+msgstr "批量命令"
+
+#: tabby-aishell/src/commands.ts
+msgid "AI assistant"
+msgstr "AI 助手"
+
+#: tabby-aishell/src/components/fromTemplateModal.component.pug
+msgid "New servers from template"
+msgstr "从模板批量新建服务器"
+
+#: tabby-aishell/src/components/fromTemplateModal.component.pug
+msgid "No templates yet. Create one in \"Manage templates\" first."
+msgstr "还没有模板，请先在“模板管理”中创建。"
+
+#: tabby-aishell/src/components/fromTemplateModal.component.pug
+msgid "Template"
+msgstr "模板"
+
+#: tabby-aishell/src/components/fromTemplateModal.component.pug
+msgid "Server list, one per line: host / user@host / host:port / user@host:port, optional #name suffix"
+msgstr "服务器清单，每行一台：host / user@host / host:port / user@host:port，行尾可用 #名称 备注"
+
+#: tabby-aishell/src/components/fromTemplateModal.component.pug
+msgid "Parsed: {n} servers"
+msgstr "已识别 {n} 台服务器"
+
+#: tabby-aishell/src/components/fromTemplateModal.component.pug
+msgid "Unrecognized lines: {lines}"
+msgstr "无法识别的行：{lines}"
+
+#: tabby-aishell/src/components/fromTemplateModal.component.pug
+msgid "Target group"
+msgstr "目标分组"
+
+#: tabby-aishell/src/components/fromTemplateModal.component.ts
+msgid "Created {n} profiles from template"
+msgstr "已从模板创建 {n} 个连接"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.pug
+msgid "Manage templates"
+msgstr "模板管理"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.pug
+msgid "New template name"
+msgstr "新模板名称"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.pug
+msgid "Create template"
+msgstr "创建模板"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.pug
+msgid "No templates yet."
+msgstr "还没有模板。"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.pug
+msgid "Type"
+msgstr "类型"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.pug
+msgid "Variables"
+msgstr "变量"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.pug
+msgid "Variables for"
+msgstr "变量设置 -"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.pug
+msgid "Sync to derived profiles"
+msgstr "同步到派生的连接"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.ts
+msgid "Apply template \"{name}\" to all derived profiles?"
+msgstr "将模板“{name}”应用到所有派生连接？"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.ts
+msgid "Apply"
+msgstr "应用"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.ts
+msgid "Updated {n} profiles"
+msgstr "已更新 {n} 个连接"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.ts
+msgid "Delete template \"{name}\"?"
+msgstr "删除模板“{name}”？"
+
+#: tabby-aishell/src/components/manageTemplatesModal.component.ts
+msgid "No profile provider available"
+msgstr "没有可用的连接类型提供者"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Targets"
+msgstr "目标"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Selected servers"
+msgstr "选中的服务器"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "All open terminal tabs"
+msgstr "所有已打开的终端"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "All servers in group"
+msgstr "分组内全部服务器"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Pick group to select…"
+msgstr "选择分组以批量勾选…"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Select"
+msgstr "全选"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Commands, one per line"
+msgstr "命令，每行一条"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Variables like $SERVER_IP / $SERVER_NAME are replaced per target."
+msgstr "$SERVER_IP / $SERVER_NAME 等变量会按目标分别替换。"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Send"
+msgstr "发送"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Running…"
+msgstr "执行中…"
+
+#: tabby-aishell/src/components/batchCommandModal.component.ts
+msgid "The commands look dangerous. Send anyway?"
+msgstr "命令看起来有风险，仍要发送？"
+
+#: tabby-aishell/src/services/batchCommand.service.ts
+msgid "Command sent to {n} targets"
+msgstr "命令已发送到 {n} 个目标"
+
+#: tabby-aishell/src/services/batchCommand.service.ts
+msgid "Sent to {ok}/{n} targets"
+msgstr "已发送到 {ok}/{n} 个目标"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.pug
+msgid "AI Assistant"
+msgstr "AI 助手"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.pug
+msgid "Explain selection"
+msgstr "解释选中内容"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.pug
+msgid "Diagnose output"
+msgstr "诊断最近输出"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.pug
+msgid "Analyze logs"
+msgstr "分析日志"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.pug
+msgid "Ask anything about your servers, or use the quick actions above."
+msgstr "可以询问任何服务器相关问题，或使用上方快捷操作。"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.pug
+msgid "Ask about servers, logs, errors…"
+msgstr "询问服务器、日志、报错…"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.pug
+msgid "Thinking…"
+msgstr "思考中…"
+
+#: tabby-aishell/src/contextMenu.ts
+msgid "AI"
+msgstr "AI"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "AI Assistant Settings"
+msgstr "AI 助手设置"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Enable AI assistant"
+msgstr "启用 AI 助手"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Provider presets"
+msgstr "服务商预设"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "API base URL (OpenAI compatible)"
+msgstr "API 地址（OpenAI 兼容）"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Model"
+msgstr "模型"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "API key (empty for local models)"
+msgstr "API 密钥（本地模型可留空）"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Max output tokens"
+msgstr "最大输出 tokens"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "The API key is stored in the local Tabby config file."
+msgstr "API 密钥保存在本地 Tabby 配置文件中。"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.ts
+msgid "AI settings saved"
+msgstr "AI 设置已保存"
+
+#: tabby-aishell/src/services/ai.service.ts
+msgid "AI assistant is not configured. Open AI settings first."
+msgstr "AI 助手尚未配置，请先打开 AI 设置。"
+
+#: tabby-aishell/src/services/ai.service.ts
+msgid "AI request failed: {error}"
+msgstr "AI 请求失败：{error}"
+
+
+#: tabby-aishell/src/services/ai.service.ts
+msgid "Unexpected AI response format"
+msgstr "AI 响应格式异常"
+
+#: tabby-aishell/src/contextMenu.ts
+msgid "Explain the following terminal output / command:"
+msgstr "请解释以下终端输出/命令："
+
+#: tabby-aishell/src/contextMenu.ts
+msgid "Diagnose the recent terminal output below, find possible problems and give suggestions:"
+msgstr "请诊断以下最近的终端输出，找出可能的问题并给出处理建议："
+
+#: tabby-aishell/src/contextMenu.ts
+msgid "Analyze the logs below, summarize key events and anomalies:"
+msgstr "请分析以下日志，总结关键事件与异常："

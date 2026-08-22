@@ -38,6 +38,14 @@ input {
         position: relative;
         display: flex;
         align-items: center;
+        // AISHELL: 多选选中态
+        &.selected {
+            background-color: var(--theme-primary);
+            color: var(--theme-primary-fg);
+            .text-muted {
+                color: var(--theme-primary-fg) !important;
+            }
+        }
         &:hover {
             background-color: var(--theme-secondary);
             .actions {
@@ -99,4 +107,65 @@ input {
     top: 50%;
     right: -4px;
     cursor: col-resize;
+}
+
+/* AISHELL: 批量操作条 */
+.batch-bar {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .15rem .25rem;
+    background-color: var(--theme-bg);
+    border: 1px solid var(--theme-secondary);
+    border-radius: .3rem;
+
+    .batch-bar-count {
+        font-size: .8rem;
+        color: var(--theme-secondary-fg);
+        margin-right: auto;
+        white-space: nowrap;
+    }
+
+    .batch-bar-actions {
+        display: flex;
+        gap: .15rem;
+
+        .btn {
+            padding: .1rem .4rem;
+            font-size: .7rem;
+            line-height: 1.4;
+        }
+    }
+}
+
+/* AISHELL: 拖拽相关 */
+.group-profiles {
+    min-height: 1.1rem;
+    /* 拖拽悬停时高亮可放置目标 */
+    &.cdk-drop-list-dragging,
+    &.cdk-drop-list-receiving {
+        background-color: color-mix(in srgb, var(--theme-primary) 15%, transparent);
+        border-radius: .3rem;
+    }
+}
+
+.group-header-droplist {
+    &.cdk-drop-list-receiving {
+        background-color: color-mix(in srgb, var(--theme-primary) 20%, transparent);
+        border-radius: .3rem;
+    }
+}
+
+.root-drop-zone {
+    margin-top: .5rem;
+    padding: .5rem;
+    border: 1px dashed var(--theme-primary);
+    border-radius: .3rem;
+    text-align: center;
+    font-size: .8rem;
+    color: var(--theme-secondary-fg);
+
+    &.cdk-drop-list-receiving {
+        background-color: color-mix(in srgb, var(--theme-primary) 20%, transparent);
+    }
 }

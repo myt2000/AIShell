@@ -1,0 +1,36 @@
+.modal-content.ai-assistant-modal
+    .modal-header
+        h5.modal-title
+            i.fas.fa-robot.me-2
+            | {{ 'AI Assistant'|translate }}
+        div
+            button.btn.btn-link(title='"Settings"|translate', (click)='openSettings()')
+                i.fas.fa-gear
+            button.btn.btn-link.close(type='button', (click)='cancel()') ×
+    .modal-body.d-flex.flex-column
+        .quick-actions.btn-group.btn-group-sm.mb-2
+            button.btn.btn-secondary(type='button', [disabled]='busy || !hasSelection', (click)='explainSelection()') {{ 'Explain selection'|translate }}
+            button.btn.btn-secondary(type='button', [disabled]='busy', (click)='diagnoseRecent()') {{ 'Diagnose output'|translate }}
+            button.btn.btn-secondary(type='button', [disabled]='busy', (click)='analyzeLogs()') {{ 'Analyze logs'|translate }}
+
+        .chat-history.flex-grow-1(#history)
+            .alert.alert-warning(*ngIf='messages.length === 0') {{ 'Ask anything about your servers, or use the quick actions above.'|translate }}
+            .msg(*ngFor='let m of messages', [class.user]='m.role === "user"', [class.error]='m.error')
+                .role {{ m.role === 'user' ? 'You' : 'AI' }}
+                .content {{ m.content }}
+            .msg.busy-indicator(*ngIf='busy')
+                .role AI
+                .content
+                    i.fas.fa-spinner.fa-spin.me-1
+                    | {{ 'Thinking…'|translate }}
+
+        .input-group.mt-2
+            textarea.form-control(
+                rows='2',
+                [(ngModel)]='input',
+                [placeholder]='"Ask about servers, logs, errors…"|translate',
+                (keydown.enter)='$event.preventDefault(); submit()'
+            )
+            button.btn.btn-primary(type='button', [disabled]='busy || !input.trim()', (click)='submit()') {{ 'Send'|translate }}
+    .modal-footer
+        button.btn.btn-secondary(type='button', (click)='cancel()') {{ 'Close'|translate }}

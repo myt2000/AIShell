@@ -1,0 +1,39 @@
+.modal-content
+    .modal-header
+        h5.modal-title {{ 'AI Assistant Settings'|translate }}
+        button.btn.btn-link.close(type='button', (click)='cancel()') ×
+    .modal-body
+        .mb-3
+            .form-check.form-switch
+                input.form-check-input(type='checkbox', id='ai-enabled', [(ngModel)]='enabled')
+                label.form-check-label(for='ai-enabled') {{ 'Enable AI assistant'|translate }}
+
+        .mb-2
+            label.form-label {{ 'Provider presets'|translate }}
+            .btn-group.btn-group-sm
+                button.btn.btn-secondary(
+                    *ngFor='let p of presets',
+                    type='button',
+                    (click)='applyPreset(p)'
+                ) {{ p.name }}
+
+        .mb-3
+            label.form-label {{ 'API base URL (OpenAI compatible)'|translate }}
+            input.form-control(type='text', [(ngModel)]='baseUrl', placeholder='https://api.openai.com/v1')
+
+        .mb-3
+            label.form-label {{ 'Model'|translate }}
+            input.form-control(type='text', [(ngModel)]='model', placeholder='gpt-4o-mini')
+
+        .mb-3
+            label.form-label {{ 'API key (empty for local models)'|translate }}
+            input.form-control(type='password', [(ngModel)]='apiKey', autocomplete='off')
+
+        .mb-3
+            label.form-label {{ 'Max output tokens'|translate }}
+            input.form-control(type='number', [(ngModel)]='maxOutputTokens', min='256', max='32768')
+
+        .form-text.text-muted {{ 'The API key is stored in the local Tabby config file.'|translate }}
+    .modal-footer
+        button.btn.btn-primary(type='button', (click)='save()') {{ 'Save'|translate }}
+        button.btn.btn-secondary(type='button', (click)='cancel()') {{ 'Cancel'|translate }}

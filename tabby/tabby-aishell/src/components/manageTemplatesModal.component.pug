@@ -1,0 +1,49 @@
+.modal-content
+    .modal-header
+        h5.modal-title {{ 'Manage templates'|translate }}
+        button.btn.btn-link.close(type='button', (click)='cancel()') ×
+    .modal-body
+        .mb-3.d-flex.gap-2
+            input.form-control.me-2(
+                type='text',
+                [(ngModel)]='newTemplateName',
+                [placeholder]='"New template name"|translate'
+            )
+            button.btn.btn-primary(type='button', [disabled]='!newTemplateName.trim()', (click)='createTemplate()')
+                i.fa.fa-plus.me-1
+                | {{ 'Create template'|translate }}
+
+        .alert.alert-info(*ngIf='templates.length === 0') {{ 'No templates yet.'|translate }}
+
+        table.table.table-sm(*ngIf='templates.length > 0')
+            thead
+                tr
+                    th {{ 'Name'|translate }}
+                    th {{ 'Type'|translate }}
+                    th {{ 'Variables'|translate }}
+                    th
+            tbody
+                tr(*ngFor='let t of templates')
+                    td {{ t.name }}
+                    td {{ t.profileType }}
+                    td {{ (t.vars | keyvalue).length }}
+                    td.text-end
+                        .btn-group.btn-group-sm
+                            button.btn.btn-secondary([ngbTooltip]='"Edit"|translate', (click)='editTemplate(t)')
+                                i.fa.fa-pen
+                            button.btn.btn-secondary([ngbTooltip]='"Variables"|translate', (click)='startEditVars(t)')
+                                i.fa.fa-dollar-sign
+                            button.btn.btn-secondary([ngbTooltip]='"Sync to derived profiles"|translate', (click)='syncTemplate(t)')
+                                i.fa.fa-rotate
+                            button.btn.btn-danger([ngbTooltip]='"Delete"|translate', (click)='deleteTemplate(t)')
+                                i.fa.fa-trash
+
+        .vars-editor.card(*ngIf='editingVarsFor')
+            .card-body
+                h6.card-title {{ 'Variables for'|translate }}: {{ editingVarsFor.name }} (KEY=VALUE)
+                textarea.form-control(rows='4', [(ngModel)]='varsText', placeholder='ENV=prod\nROLE=web')
+                .mt-2
+                    button.btn.btn-sm.btn-primary.me-1(type='button', (click)='saveVars()') {{ 'Save'|translate }}
+                    button.btn.btn-sm.btn-secondary(type='button', (click)='editingVarsFor = null') {{ 'Cancel'|translate }}
+    .modal-footer
+        button.btn.btn-secondary(type='button', (click)='cancel()') {{ 'Close'|translate }}

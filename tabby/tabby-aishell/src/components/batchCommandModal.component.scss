@@ -1,0 +1,15 @@
+.modal-content {
+    min-width: 520px;
+
+    .profile-checklist {
+        max-height: 240px;
+        overflow-y: auto;
+        border: 1px solid var(--theme-secondary);
+        border-radius: .3rem;
+        padding: .5rem;
+    }
+
+    .command-input {
+        font-family: var(--terminal-font-family, monospace);
+    }
+}

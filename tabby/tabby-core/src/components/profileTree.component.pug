@@ -6,42 +6,109 @@
         (ngModelChange)='onFilterChange()'
     )
 
+    // AISHELL: 批量操作条（有选中项时显示）
+    .batch-bar.mb-1(*ngIf='selectionCount > 0')
+        span.batch-bar-count {{ 'Selected: {n}'|translate: {n: selectionCount} }}
+        .batch-bar-actions
+            button.btn.btn-sm.btn-secondary(
+                [ngbTooltip]='"Connect selected"|translate',
+                (click)='batchConnect()'
+            ): i.fas.fa-play
+            button.btn.btn-sm.btn-secondary(
+                [ngbTooltip]='"Move to group"|translate',
+                (click)='batchMoveMenu()'
+            ): i.fas.fa-folder-tree
+            button.btn.btn-sm.btn-secondary(
+                [ngbTooltip]='"Duplicate selected"|translate',
+                (click)='batchDuplicate()'
+            ): i.fas.fa-copy
+            button.btn.btn-sm.btn-secondary.text-danger(
+                [ngbTooltip]='"Delete selected"|translate',
+                (click)='batchDelete()'
+            ): i.fas.fa-trash
+            button.btn.btn-sm.btn-secondary(
+                [ngbTooltip]='"Clear selection"|translate',
+                (click)='clearSelection()'
+            ): i.fas.fa-xmark
+
     .profile-tree.h-100
         .d-flex.flex-column.p-2.profile-tree-container
 
             ng-container(*ngFor='let group of rootGroups')
                 ng-container(*ngTemplateOutlet='recursiveGroup; context: {$implicit: group, depth: 0}')
 
+            // AISHELL: 拖拽到此处 → 移到顶层/未分组
+            .root-drop-zone(
+                *ngIf='isDragging',
+                cdkDropList,
+                [cdkDropListData]='{kind: "root"}',
+                [cdkDropListSortingDisabled]='true',
+                [cdkDropListEnterPredicate]='canDropItem',
+                (cdkDropped)='onTreeDrop($event)'
+            ) {{ 'Drop here to move to top level'|translate }}
+
             ng-template(#recursiveGroup let-group let-depth='depth')
-                a.tree-item(
-                    (click)='toggleGroupCollapse(group)',
-                    [style.paddingLeft.px]='depth * 20',
-                    (contextmenu)='groupContextMenu(group, $event)',
-                    href='#'
+                // AISHELL: 分组头 = 拖放目标（放入分组）+ 可拖拽项（移动分组）
+                div.group-header-droplist(
+                    cdkDropList,
+                    [cdkDropListData]='{kind: "group-header", group: group}',
+                    [cdkDropListSortingDisabled]='true',
+                    [cdkDropListEnterPredicate]='canDropItem',
+                    (cdkDropped)='onTreeDrop($event)'
                 )
-                    .fw-20
-                        .fa.fa-fw.fas.fa-chevron-right.ms-1.text-muted(*ngIf='group.collapsed')
-                        .fa.fa-fw.fas.fa-chevron-down.ms-1.text-muted(*ngIf='!group.collapsed')
-                    .fw-20
-                        profile-icon.ms-1([icon]='group.icon ?? "far fa-folder"', [color]='group?.color')
-                    span.ms-2.me-auto {{ group.name || ("Ungrouped"|translate) }}
+                    a.tree-item.group-header(
+                        cdkDrag,
+                        [cdkDragData]='{kind: "group", group: group}',
+                        [cdkDragPreviewClass]='"aishell-tree-drag-preview"',
+                        (cdkDragStarted)='onDragStarted()',
+                        (cdkDragEnded)='onDragEnded()',
+                        (click)='toggleGroupCollapse(group)',
+                        [style.paddingLeft.px]='depth * 20',
+                        (contextmenu)='groupContextMenu(group, $event)',
+                        href='#'
+                    )
+                        .fw-20
+                            .fa.fa-fw.fas.fa-chevron-right.ms-1.text-muted(*ngIf='group.collapsed')
+                            .fa.fa-fw.fas.fa-chevron-down.ms-1.text-muted(*ngIf='!group.collapsed')
+                        .fw-20
+                            profile-icon.ms-1([icon]='group.icon ?? "far fa-folder"', [color]='group?.color')
+                        span.ms-2.me-auto {{ group.name || ("Ungrouped"|translate) }}
+                        .actions
+                            .action.drag-handle
+                                .fa.fa-fw.fas.fa-grip-lines
+
+                // AISHELL: 分组内容区 = profile 拖放目标
+                div.group-profiles(
+                    *ngIf='!group.collapsed',
+                    cdkDropList,
+                    [cdkDropListData]='{kind: "profiles", group: group}',
+                    [cdkDropListSortingDisabled]='true',
+                    [cdkDropListEnterPredicate]='canDropItem',
+                    (cdkDropped)='onTreeDrop($event)'
+                )
+                    a.tree-item(
+                        *ngFor='let profile of group.profiles',
+                        cdkDrag,
+                        [cdkDragData]='{kind: "profile", profile: profile}',
+                        [cdkDragPreviewClass]='"aishell-tree-drag-preview"',
+                        (cdkDragStarted)='onDragStarted()',
+                        (cdkDragEnded)='onDragEnded()',
+                        [class.selected]='isSelected(profile)',
+                        (click)='onProfileClick(profile, $event)',
+                        (dblclick)='launchProfile(profile)',
+                        [style.paddingLeft.px]='(depth + 1) * 20',
+                        (contextmenu)='profileContextMenu(profile, $event)',
+                        href='#'
+                    )
+                        .fw-20
+                            profile-icon.ms-1([icon]='profile.icon', [color]='profile.color')
+                        span.ms-2.no-wrap {{ profile.name }}
+
+                        .actions
+                            .action((click)='launchProfile(profile); $event.stopPropagation()')
+                                .fa.fa-fw.fas.fa-play
 
                 ng-container(*ngIf='!group.collapsed')
-                    ng-container(*ngFor='let profile of group.profiles')
-                        a.tree-item(
-                            (dblclick)='launchProfile(profile)',
-                            [style.paddingLeft.px]='(depth + 1) * 20',
-                            (contextmenu)='profileContextMenu(profile, $event)',
-                            href='#'
-                        )
-                            .fw-20
-                                profile-icon.ms-1([icon]='profile.icon', [color]='profile.color')
-                            span.ms-2.no-wrap {{ profile.name }}
-
-                            .actions
-                                .action((click)='launchProfile(profile)')
-                                    .fa.fa-fw.fas.fa-play
-
                     ng-container(*ngFor='let child of group.children')
                         ng-container(*ngTemplateOutlet='recursiveGroup; context: {$implicit: child, depth: depth + 1}')
 .grabber(

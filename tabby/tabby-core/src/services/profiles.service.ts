@@ -160,6 +160,61 @@ export class ProfilesService {
         this.config.store.profiles = this.config.store.profiles.filter(x => !filter(x))
     }
 
+    // AISHELL: 批量移动 profiles 到指定分组（groupId 为 null 时移到未分组）
+    async bulkMoveProfiles (profiles: PartialProfile<Profile>[], groupId: string|null): Promise<void> {
+        const ids = new Set(profiles.map(p => p.id))
+        for (const p of this.config.store.profiles) {
+            if (ids.has(p.id)) {
+                if (groupId === null) {
+                    delete p.group
+                } else {
+                    p.group = groupId
+                }
+            }
+        }
+    }
+
+    // AISHELL: 批量更新 profiles，update 回调直接作用于 config 中的存储对象
+    async bulkUpdateProfiles (profiles: PartialProfile<Profile>[], update: (p: PartialProfile<Profile>) => void): Promise<void> {
+        const ids = new Set(profiles.map(p => p.id))
+        for (const p of this.config.store.profiles) {
+            if (ids.has(p.id)) {
+                update(p)
+            }
+        }
+    }
+
+    // AISHELL: 批量复制 profiles（副本放入原分组，名称加 " copy" 后缀）
+    async duplicateProfiles (profiles: PartialProfile<Profile>[]): Promise<PartialProfile<Profile>[]> {
+        const result: PartialProfile<Profile>[] = []
+        for (const profile of profiles) {
+            const copy = deepClone(profile)
+            delete copy.id
+            copy.name = `${profile.name} copy`
+            await this.newProfile(copy)
+            result.push(copy)
+        }
+        return result
+    }
+
+    // AISHELL: 递归收集分组及其子分组下的所有 profiles
+    collectGroupProfiles (groupId: string, includeDescendants = true): PartialProfile<Profile>[] {
+        const groupIds = new Set<string>([groupId])
+        if (includeDescendants) {
+            let changed = true
+            while (changed) {
+                changed = false
+                for (const g of this.config.store.groups ?? []) {
+                    if (g.parentGroupId && groupIds.has(g.parentGroupId) && !groupIds.has(g.id)) {
+                        groupIds.add(g.id)
+                        changed = true
+                    }
+                }
+            }
+        }
+        return (this.config.store.profiles ?? []).filter(p => groupIds.has(p.group ?? ''))
+    }
+
     async openNewTabForProfile <P extends Profile> (profile: PartialProfile<P>): Promise<BaseTabComponent|null> {
         const params = await this.newTabParametersForProfile(profile)
         if (params) {

@@ -1,0 +1,36 @@
+.modal-content
+    .modal-header
+        h5.modal-title {{ 'New servers from template'|translate }}
+        button.btn.btn-link.close(type='button', (click)='cancel()') ×
+    .modal-body
+        .mb-3(*ngIf='templates.length === 0')
+            .alert.alert-warning {{ 'No templates yet. Create one in "Manage templates" first.'|translate }}
+
+        form(*ngIf='templates.length > 0')
+            .mb-3
+                label.form-label {{ 'Template'|translate }}
+                select.form-control([(ngModel)]='selectedTemplateId', name='template')
+                    option(*ngFor='let t of templates', [value]='t.id') {{ t.name }} ({{ t.profileType }})
+            .mb-3
+                label.form-label {{ 'Server list, one per line: host / user@host / host:port / user@host:port, optional #name suffix'|translate }}
+                textarea.form-control(
+                    rows='8',
+                    [(ngModel)]='serverListText',
+                    name='serverList',
+                    (ngModelChange)='onTextChange()',
+                    placeholder='10.0.0.1 | root@10.0.0.2:2222 # db-server'
+                )
+                .form-text.text-muted {{ 'Parsed: {n} servers'|translate: {n: parsedRows.length} }
+                .form-text.text-danger(*ngIf='parseErrors.length') {{ 'Unrecognized lines: {lines}'|translate: {lines: parseErrors.join(', ')} }
+            .mb-3
+                label.form-label {{ 'Target group'|translate }}
+                select.form-control([(ngModel)]='selectedGroupId', name='group')
+                    option(value='') {{ 'Ungrouped'|translate }}
+                    option(*ngFor='let g of groups', [value]='g.id') {{ g.name }}
+    .modal-footer
+        button.btn.btn-primary(
+            type='button',
+            [disabled]='!parsedRows.length || !selectedTemplate || creating',
+            (click)='create()'
+        ) {{ 'Create'|translate }}
+        button.btn.btn-secondary(type='button', (click)='cancel()') {{ 'Cancel'|translate }}

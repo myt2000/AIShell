@@ -11,6 +11,11 @@ export class SSHConfigProvider extends ConfigProvider {
             x11Display: null,
             knownHosts: [],
             verifyHostKeys: true,
+            // AISHELL: 智能 Keepalive —— 全局默认值（profile 未设置时生效）
+            keepaliveInterval: 15000,
+            keepaliveCountMax: 6,
+            // AISHELL: 跳板链自动收紧心跳间隔
+            adaptiveKeepalive: true,
         },
         hotkeys: {
             'restart-ssh-session': [],

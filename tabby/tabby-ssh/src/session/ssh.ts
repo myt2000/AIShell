@@ -158,6 +158,40 @@ export class SSHSession {
         })
     }
 
+    // AISHELL: 智能 Keepalive —— 计算实际生效的心跳间隔（秒）
+    // 规则：profile 显式设置 > 全局默认；走跳板链时按链深度收紧（每层减半，下限 5s）
+    private computeKeepaliveIntervalSeconds (): number|undefined {
+        const sshConfig = (this.config.store.ssh ?? {}) as { keepaliveInterval?: number, adaptiveKeepalive?: boolean }
+        let intervalMs: number = this.profile.options.keepaliveInterval ?? sshConfig.keepaliveInterval ?? 15000
+        if (!intervalMs) { return undefined }
+
+        if (sshConfig.adaptiveKeepalive !== false && this.profile.options.jumpHost) {
+            const depth = this.getJumpChainDepth(this.profile.options.jumpHost)
+            if (depth > 0) {
+                intervalMs = Math.max(5000, Math.round(intervalMs / (depth + 1)))
+                this.emitServiceMessage(colors.bgBlue.black(' Keepalive ') + ` jump chain depth=${depth}, interval=${intervalMs}ms`)
+            }
+        }
+
+        intervalMs = Math.min(Math.max(intervalMs, 5000), 120000)
+        return Math.round(intervalMs / 1000)
+    }
+
+    // AISHELL: 计算跳板链深度（不含自身），带环检测
+    private getJumpChainDepth (jumpProfileId: string): number {
+        const seen = new Set<string>()
+        let depth = 0
+        let currentId: string|undefined = jumpProfileId
+        while (currentId && !seen.has(currentId) && depth <= 10) {
+            seen.add(currentId)
+            const jumpProfile: any = (this.config.store.profiles ?? []).find(p => p.id === currentId)
+            if (!jumpProfile) { break }
+            depth++
+            currentId = jumpProfile.options?.jumpHost
+        }
+        return depth
+    }
+
     async init (): Promise<void> {
         this.allAuthMethods = [{ type: 'none' }]
         if (!this.profile.options.auth || this.profile.options.auth === 'publicKey') {
@@ -426,8 +460,9 @@ export class SSHSession {
                     key: this.profile.options.algorithms[SSHAlgorithmType.HOSTKEY].filter(x => supportedAlgorithms[SSHAlgorithmType.HOSTKEY].includes(x)),
                     compression: this.profile.options.algorithms[SSHAlgorithmType.COMPRESSION].filter(x => supportedAlgorithms[SSHAlgorithmType.COMPRESSION].includes(x)),
                 },
-                keepaliveIntervalSeconds: this.profile.options.keepaliveInterval ? Math.round(this.profile.options.keepaliveInterval / 1000) : undefined,
-                keepaliveCountMax: this.profile.options.keepaliveCountMax,
+                // AISHELL: 智能 Keepalive（全局默认 + 跳板链收紧）
+                keepaliveIntervalSeconds: this.computeKeepaliveIntervalSeconds(),
+                keepaliveCountMax: this.profile.options.keepaliveCountMax ?? (this.config.store.ssh as any)?.keepaliveCountMax ?? 6,
                 connectionTimeoutSeconds: this.profile.options.readyTimeout ? Math.round(this.profile.options.readyTimeout / 1000) : undefined,
             },
         )

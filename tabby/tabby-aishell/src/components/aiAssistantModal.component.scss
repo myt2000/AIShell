@@ -1,0 +1,52 @@
+.modal-content.ai-assistant-modal {
+    min-width: 600px;
+    min-height: 480px;
+
+    .modal-body {
+        overflow: hidden;
+    }
+
+    .chat-history {
+        overflow-y: auto;
+        background: var(--theme-bg);
+        border: 1px solid var(--theme-secondary);
+        border-radius: .3rem;
+        padding: .5rem;
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        min-height: 260px;
+
+        .msg {
+            max-width: 92%;
+            border-radius: .4rem;
+            padding: .4rem .6rem;
+            background: var(--theme-bg-more-2);
+
+            .role {
+                font-size: .7rem;
+                opacity: .6;
+                margin-bottom: .15rem;
+            }
+
+            .content {
+                white-space: pre-wrap;
+                word-break: break-word;
+                font-size: .85rem;
+            }
+
+            &.user {
+                align-self: flex-end;
+                background: color-mix(in srgb, var(--theme-primary) 25%, var(--theme-bg));
+            }
+
+            &.error .content {
+                color: var(--theme-danger, #e05555);
+            }
+        }
+    }
+
+    textarea {
+        resize: none;
+    }
+}

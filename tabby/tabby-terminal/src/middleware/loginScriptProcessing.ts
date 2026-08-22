@@ -11,10 +11,13 @@ export interface LoginScript {
 
 export interface LoginScriptsOptions {
     scripts: LoginScript[]
+    /** AISHELL: 变量替换上下文，发送前将 send 中的 $VAR / ${VAR} 替换为实际值 */
+    variables?: Record<string, string>
 }
 
 export class LoginScriptProcessor extends SessionMiddleware {
     private remainingScripts: LoginScript[] = []
+    private variables: Record<string, string>
 
     private escapeSeqMap = {
         a: '\x07',
@@ -33,6 +36,7 @@ export class LoginScriptProcessor extends SessionMiddleware {
     ) {
         super()
         this.remainingScripts = deepClone(options.scripts)
+        this.variables = options.variables ?? {}
         for (const script of this.remainingScripts) {
             if (!script.isRegex) {
                 script.expect = this.unescape(script.expect)
@@ -58,7 +62,7 @@ export class LoginScriptProcessor extends SessionMiddleware {
 
             if (match) {
                 this.logger.info('Executing script:', script)
-                this.outputToSession.next(Buffer.from(script.send + '\n'))
+                this.outputToSession.next(Buffer.from(this.substituteVariables(script.send) + '\n'))
                 this.remainingScripts = this.remainingScripts.filter(x => x !== script)
             } else {
                 if (script.optional) {
@@ -77,12 +81,24 @@ export class LoginScriptProcessor extends SessionMiddleware {
         for (const script of this.remainingScripts) {
             if (!script.expect) {
                 this.logger.info('Executing script:', script.send)
-                this.outputToSession.next(Buffer.from(script.send + '\n'))
+                this.outputToSession.next(Buffer.from(this.substituteVariables(script.send) + '\n'))
                 this.remainingScripts = this.remainingScripts.filter(x => x !== script)
             } else {
                 break
             }
         }
+    }
+
+    // AISHELL: $VAR / ${VAR} 替换，未定义的变量保持原样
+    substituteVariables (text: string): string {
+        if (!text || !Object.keys(this.variables).length) { return text }
+        return text.replace(
+            /\$\{(\w+)\}|\$(\w+)/g,
+            (match, braced, plain) => {
+                const name = braced ?? plain
+                return Object.prototype.hasOwnProperty.call(this.variables, name) ? this.variables[name] : match
+            },
+        )
     }
 
     unescape (line: string): string {

@@ -21,7 +21,17 @@ export class SSHShellSession extends BaseSession {
     ) {
         super(injector.get(LogService).create(`ssh-shell-${profile.options.host}-${profile.options.port}`))
         this.ssh = ssh
-        this.setLoginScriptsOptions(this.profile.options)
+        // AISHELL: 构建登录脚本变量上下文（$SERVER_NAME/$SERVER_IP/$SERVER_PORT/$SERVER_USER + 模板自定义变量）
+        const options: any = { ...this.profile.options }
+        options.variables = {
+            SERVER_NAME: this.profile.name ?? '',
+            SERVER_IP: options.host ?? '',
+            SERVER_HOST: options.host ?? '',
+            SERVER_PORT: String(options.port ?? ''),
+            SERVER_USER: options.user ?? '',
+            ...(options['aishell:vars'] ?? {}),
+        }
+        this.setLoginScriptsOptions(options)
         this.ssh.serviceMessage$.subscribe(m => this.serviceMessage.next(m))
         this.middleware.push(new UTF8SplitterMiddleware())
         this.middleware.push(new InputProcessor(profile.options.input))

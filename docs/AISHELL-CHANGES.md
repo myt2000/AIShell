@@ -78,6 +78,19 @@
    workspace-manager）从 `%APPDATA%\tabby\plugins\node_modules` 移除备份到
    `%APPDATA%\tabby\plugins-disabled-backup`（它们与本项目的内置功能重复）
 
+## 服务器树面板消失修复记录（2026-08-24）
+- 现象：打包版左侧服务器树（文件夹管理 + AIShell 工具栏）完全不显示
+- 根因：上游默认 `showProfileTree: false`（`tabby-core/src/configDefaults.yaml`），
+  `appRoot.component.pug` 只在 `config.store.showProfileTree` 为真时渲染 `<profile-tree>`，
+  用户配置未覆盖该键 → 整个树面板不渲染（AIShell 工具栏在树面板内部，一起消失）
+- 修复：
+  1. `tabby-core/src/configDefaults.yaml`：默认改为 `true`（AIShell 以服务器管理为核心，
+     树面板理应默认可见）
+  2. 用户配置 `%APPDATA%\tabby\config.yaml` 显式写入 `showProfileTree: true`（双保险）
+- 右上角"固定/重新连接"悬浮按钮说明：属 Tabby 原生终端工具栏
+  （`tabby-terminal/terminalToolbar`，作用于当前终端标签），非 AIShell 功能；
+  AIShell 的 4 个工具按钮只在左侧树面板和启动页出现
+
 ## Windows 打包手册（已跑通）
 
 

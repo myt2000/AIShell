@@ -61,4 +61,4 @@ hacks:
   globalHotkey: null
 language: null
 defaultQuickConnectProvider: "ssh"
-showProfileTree: false
+showProfileTree: true # AISHELL: 服务器树（文件夹管理 + AIShell 工具栏）默认开启，上游默认为 false

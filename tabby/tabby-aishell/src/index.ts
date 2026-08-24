@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { ToastrModule } from 'ngx-toastr'
-import { CommandProvider, ConfigProvider, TabContextMenuItemProvider } from 'tabby-core'
+import TabbyCoreModule, { CommandProvider, ConfigProvider, TabContextMenuItemProvider } from 'tabby-core'
 
 import { AIShellConfigProvider } from './config'
 import { AIShellCommandProvider } from './commands'
@@ -25,6 +25,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
         FormsModule,
         NgbModule,
         ToastrModule,
+        TabbyCoreModule,
     ],
     declarations: [
         FromTemplateModalComponent,
@@ -59,3 +60,8 @@ export { VariableSubstitutionService } from './services/variableSubstitution.ser
 export { BatchCommandService } from './services/batchCommand.service'
 export { AiService } from './services/ai.service'
 export { TerminalContextService } from './services/terminalContext.service'
+export { FromTemplateModalComponent } from './components/fromTemplateModal.component'
+export { ManageTemplatesModalComponent } from './components/manageTemplatesModal.component'
+export { BatchCommandModalComponent } from './components/batchCommandModal.component'
+export { AiAssistantModalComponent } from './components/aiAssistantModal.component'
+export { AiSettingsModalComponent } from './components/aiSettingsModal.component'

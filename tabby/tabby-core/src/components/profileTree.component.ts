@@ -174,6 +174,27 @@ export class ProfileTreeComponent extends BaseComponent {
         return this.editProfileGroup(group)
     }
 
+    // AISHELL: ===== AIShell 功能入口（模板/批量命令/AI，弹窗由 tabby-aishell 提供） =====
+
+    openAIShellModal (which: 'fromTemplate'|'manageTemplates'|'batchCommand'|'aiAssistant'): void {
+        try {
+            const aishell = window['nodeRequire']('tabby-aishell')
+            const components = {
+                fromTemplate: aishell.FromTemplateModalComponent,
+                manageTemplates: aishell.ManageTemplatesModalComponent,
+                batchCommand: aishell.BatchCommandModalComponent,
+                aiAssistant: aishell.AiAssistantModalComponent,
+            }
+            const component = components[which]
+            if (!component) {
+                throw new Error(`Unknown AIShell modal: ${which}`)
+            }
+            this.ngbModal.open(component, { size: 'lg' })
+        } catch (e) {
+            console.error('Failed to open AIShell modal:', e)
+        }
+    }
+
     // AISHELL: ===== 多选 =====
 
     get selectionCount (): number {

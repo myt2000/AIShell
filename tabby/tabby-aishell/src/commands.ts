@@ -25,7 +25,7 @@ export class AIShellCommandProvider extends CommandProvider {
                 label: 'New from template',
                 icon: wandIcon,
                 weight: -90,
-                locations: [CommandLocation.LeftToolbar, CommandLocation.StartPage],
+                locations: [CommandLocation.StartPage], // AISHELL: 顶栏入口移除，主入口在左侧服务器树面板
                 run: async () => {
                     this.ngbModal.open(FromTemplateModalComponent, { size: 'lg' })
                 },
@@ -44,7 +44,7 @@ export class AIShellCommandProvider extends CommandProvider {
                 label: 'Batch commands',
                 icon: broadcastIcon,
                 weight: -89,
-                locations: [CommandLocation.LeftToolbar, CommandLocation.StartPage],
+                locations: [CommandLocation.StartPage],
                 run: async () => {
                     this.ngbModal.open(BatchCommandModalComponent, { size: 'lg' })
                 },
@@ -54,7 +54,7 @@ export class AIShellCommandProvider extends CommandProvider {
                 label: 'AI assistant',
                 icon: robotIcon,
                 weight: -88,
-                locations: [CommandLocation.LeftToolbar, CommandLocation.StartPage],
+                locations: [CommandLocation.StartPage],
                 run: async () => {
                     this.ngbModal.open(AiAssistantModalComponent, { size: 'lg' })
                 },

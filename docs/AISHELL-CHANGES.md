@@ -98,8 +98,8 @@
   收起时返回 0（组件保持挂载，树状态不丢）；监听 `window:aishell:toggle-sidebar` 事件
 - `profileTree.component.pug`：标题行右侧收起按钮（fa-chevron-left）；工具栏第 5 按钮「日志分析」
 - `profileTree.component.scss`：width 过渡动画（body.resizing 时禁用）、收起态隐藏边框与 grabber
-- `tabby-aishell/commands.ts`：`aishell:toggle-sidebar` LeftToolbar 命令（顶栏常驻展开/收起按钮，
-  经 CustomEvent 与树组件解耦通信）
+- `tabby-aishell/commands.ts`：`aishell:toggle-sidebar` RightToolbar 命令（顶栏右上、设置齿轮左侧，
+  weight 9 < 设置的 10，经 CustomEvent 与树组件解耦通信）
 
 ### 终端输出实时落盘
 - 新增 `tabby-aishell/src/services/sessionLog.service.ts`：旁路订阅 `session.binaryOutput$`

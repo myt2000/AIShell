@@ -75,12 +75,12 @@ export class AIShellCommandProvider extends CommandProvider {
                 },
             },
             {
-                // AISHELL: 侧边栏收起后顶栏常驻的展开/收起按钮
+                // AISHELL: 侧边栏收起后常驻的展开/收起按钮（排在设置齿轮左侧，weight 9 < 设置的 10）
                 id: 'aishell:toggle-sidebar',
                 label: 'Toggle sidebar',
                 icon: panelLeftIcon,
-                weight: -95,
-                locations: [CommandLocation.LeftToolbar],
+                weight: 9,
+                locations: [CommandLocation.RightToolbar],
                 run: async () => {
                     window.dispatchEvent(new CustomEvent(TOGGLE_SIDEBAR_EVENT))
                 },

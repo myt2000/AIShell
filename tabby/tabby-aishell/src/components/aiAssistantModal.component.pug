@@ -12,6 +12,8 @@
             button.btn.btn-secondary(type='button', [disabled]='busy || !hasSelection', (click)='explainSelection()') {{ 'Explain selection'|translate }}
             button.btn.btn-secondary(type='button', [disabled]='busy', (click)='diagnoseRecent()') {{ 'Diagnose output'|translate }}
             button.btn.btn-secondary(type='button', [disabled]='busy', (click)='analyzeLogs()') {{ 'Analyze logs'|translate }}
+            // AISHELL: 多窗口日志分析工作台入口
+            button.btn.btn-secondary(type='button', (click)='openLogAnalysis()') {{ 'Multi-window logs'|translate }}
 
         .chat-history.flex-grow-1(#history)
             .alert.alert-warning(*ngIf='messages.length === 0') {{ 'Ask anything about your servers, or use the quick actions above.'|translate }}
@@ -29,7 +31,7 @@
                 rows='2',
                 [(ngModel)]='input',
                 [placeholder]='"Ask about servers, logs, errors…"|translate',
-                (keydown.enter)='$event.preventDefault(); submit()'
+                (keydown.enter)='onEnterKey($event)'
             )
             button.btn.btn-primary(type='button', [disabled]='busy || !input.trim()', (click)='submit()') {{ 'Send'|translate }}
     .modal-footer

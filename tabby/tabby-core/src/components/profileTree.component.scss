@@ -2,6 +2,22 @@
     background-color: var(--theme-bg-more-2);
     position: relative;
     border-right: 1px solid var(--theme-secondary);
+    /* AISHELL: 收起/展开动画；拖拽调宽时禁用过渡 */
+    transition: width .2s ease;
+    overflow: hidden;
+}
+
+:host-context(body.resizing) {
+    transition: none;
+}
+
+/* AISHELL: 收起状态：宽度归零、隐藏边框与调宽手柄 */
+:host(.aishell-collapsed) {
+    border-right: none;
+
+    .grabber {
+        display: none;
+    }
 }
 
 input {
@@ -24,11 +40,29 @@ input {
         font-size: .75rem;
         font-weight: 600;
         letter-spacing: .02em;
+
+        span {
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .aishell-collapse-btn {
+            padding: 0 .25rem;
+            line-height: 1.2;
+            color: var(--theme-secondary-fg);
+
+            &:hover {
+                color: var(--theme-primary);
+            }
+        }
     }
 
     .aishell-actions-buttons {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: .3rem;
 
         .btn {

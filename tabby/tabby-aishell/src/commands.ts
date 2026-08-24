@@ -5,11 +5,16 @@ import { Command, CommandLocation, CommandProvider } from 'tabby-core'
 import { AiAssistantModalComponent } from './components/aiAssistantModal.component'
 import { BatchCommandModalComponent } from './components/batchCommandModal.component'
 import { FromTemplateModalComponent } from './components/fromTemplateModal.component'
+import { LogAnalysisModalComponent } from './components/logAnalysisModal.component'
 import { ManageTemplatesModalComponent } from './components/manageTemplatesModal.component'
 
 const wandIcon = require('./icons/wand.svg')
 const broadcastIcon = require('./icons/broadcast.svg')
 const robotIcon = require('./icons/robot.svg')
+const panelLeftIcon = require('./icons/panelLeft.svg')
+
+/** AISHELL: 顶栏按钮与 profile-tree 组件之间的收起/展开信号（跨包解耦，树组件监听此事件） */
+export const TOGGLE_SIDEBAR_EVENT = 'aishell:toggle-sidebar'
 
 /** @hidden */
 @Injectable()
@@ -57,6 +62,27 @@ export class AIShellCommandProvider extends CommandProvider {
                 locations: [CommandLocation.StartPage],
                 run: async () => {
                     this.ngbModal.open(AiAssistantModalComponent, { size: 'lg' })
+                },
+            },
+            {
+                id: 'aishell:log-analysis',
+                label: 'Multi-window log analysis',
+                icon: robotIcon,
+                weight: -87,
+                locations: [CommandLocation.StartPage],
+                run: async () => {
+                    this.ngbModal.open(LogAnalysisModalComponent, { size: 'lg' })
+                },
+            },
+            {
+                // AISHELL: 侧边栏收起后顶栏常驻的展开/收起按钮
+                id: 'aishell:toggle-sidebar',
+                label: 'Toggle sidebar',
+                icon: panelLeftIcon,
+                weight: -95,
+                locations: [CommandLocation.LeftToolbar],
+                run: async () => {
+                    window.dispatchEvent(new CustomEvent(TOGGLE_SIDEBAR_EVENT))
                 },
             },
         ]

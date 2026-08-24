@@ -58,6 +58,21 @@ export class ProfileTreeComponent extends BaseComponent {
     panelIsResizing = false
     panelStartX = 0
 
+    // AISHELL: 侧边栏收起状态（与宽度一样存 localStorage，组件保持挂载、树状态不丢）
+    @HostBinding('class.aishell-collapsed')
+    collapsed: boolean = window.localStorage.profileTreeCollapsed === '1'
+
+    toggleCollapsed (): void {
+        this.collapsed = !this.collapsed
+        window.localStorage.profileTreeCollapsed = this.collapsed ? '1' : '0'
+    }
+
+    // AISHELL: 顶栏 aishell:toggle-sidebar 按钮经 window 事件转发收起/展开（跨包解耦）
+    @HostListener('window:aishell:toggle-sidebar')
+    onToggleSidebarEvent (): void {
+        this.toggleCollapsed()
+    }
+
     constructor (
         private app: AppService,
         private platform: PlatformService,
@@ -178,7 +193,7 @@ export class ProfileTreeComponent extends BaseComponent {
 
     // AISHELL: ===== AIShell 功能入口（模板/批量命令/AI，弹窗由 tabby-aishell 提供） =====
 
-    openAIShellModal (which: 'fromTemplate'|'manageTemplates'|'batchCommand'|'aiAssistant'): void {
+    openAIShellModal (which: 'fromTemplate'|'manageTemplates'|'batchCommand'|'aiAssistant'|'logAnalysis'): void {
         try {
             const aishell = window['nodeRequire']('tabby-aishell')
             const components = {
@@ -186,6 +201,7 @@ export class ProfileTreeComponent extends BaseComponent {
                 manageTemplates: aishell.ManageTemplatesModalComponent,
                 batchCommand: aishell.BatchCommandModalComponent,
                 aiAssistant: aishell.AiAssistantModalComponent,
+                logAnalysis: aishell.LogAnalysisModalComponent,
             }
             const component = components[which]
             if (!component) {
@@ -589,7 +605,7 @@ export class ProfileTreeComponent extends BaseComponent {
 
     @HostListener('document:mousemove', ['$event'])
     onMouseMove (event: MouseEvent): void {
-        if (!this.panelIsResizing) { return }
+        if (!this.panelIsResizing || this.collapsed) { return }
         const delta = event.clientX - this.panelStartX
         const width = Math.min(Math.max(this.panelMinWidth, this.panelStartWidth + delta), this.panelMaxWidth)
         this.panelWidth = width
@@ -604,7 +620,8 @@ export class ProfileTreeComponent extends BaseComponent {
 
     @HostBinding('style.width.px')
     get panelWidth (): number {
-        return this.panelInternalWidth
+        // AISHELL: 收起时宽度归零（配 SCSS 过渡动画），内容 overflow hidden
+        return this.collapsed ? 0 : this.panelInternalWidth
     }
 
     set panelWidth (value: number) {

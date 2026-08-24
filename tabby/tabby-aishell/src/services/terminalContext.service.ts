@@ -58,4 +58,9 @@ export class TerminalContextService {
         }
         return parts.join(' ')
     }
+
+    /** AISHELL: 当前打开的全部终端标签（多窗口日志分析的目标清单） */
+    getOpenTerminalTabs (): BaseTerminalTabComponent<any>[] {
+        return this.app.tabs.filter(t => t instanceof BaseTerminalTabComponent) as BaseTerminalTabComponent<any>[]
+    }
 }

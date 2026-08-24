@@ -4,7 +4,9 @@ import { BaseTabComponent, MenuItemOptions, TabContextMenuItemProvider, Translat
 import { BaseTerminalTabComponent } from 'tabby-terminal'
 
 import { AiAssistantModalComponent } from './components/aiAssistantModal.component'
+import { LogAnalysisModalComponent } from './components/logAnalysisModal.component'
 import { TerminalContextService } from './services/terminalContext.service'
+import { SessionLogService } from './services/sessionLog.service'
 
 /** @hidden */
 @Injectable()
@@ -14,6 +16,7 @@ export class AiContextMenuProvider extends TabContextMenuItemProvider {
     constructor (
         private ngbModal: NgbModal,
         private terminalContext: TerminalContextService,
+        private sessionLog: SessionLogService,
         private translate: TranslateService,
     ) {
         super()
@@ -34,6 +37,9 @@ export class AiContextMenuProvider extends TabContextMenuItemProvider {
         const diagnose = (text: string) => this.translate.instant('Diagnose the recent terminal output below, find possible problems and give suggestions:') + '\n\n' + text.slice(-6000)
         const analyze = (text: string) => this.translate.instant('Analyze the logs below, summarize key events and anomalies:') + '\n\n' + text.slice(-8000)
 
+        const recording = this.sessionLog.isRecording(tab)
+        const recordingPath = this.sessionLog.getFilePath(tab)
+
         return [
             {
                 label: this.translate.instant('AI'),
@@ -53,7 +59,18 @@ export class AiContextMenuProvider extends TabContextMenuItemProvider {
                             this.terminalContext.getSelection(tab).trim() || this.terminalContext.getRecentOutput(tab, 300),
                         )),
                     },
+                    {
+                        // AISHELL: 多窗口日志分析工作台
+                        label: this.translate.instant('Multi-window log analysis…'),
+                        click: () => this.ngbModal.open(LogAnalysisModalComponent, { size: 'lg' }),
+                    },
                 ],
+            },
+            {
+                // AISHELL: 终端输出实时落盘开关
+                label: recording ? this.translate.instant('Stop recording output') : this.translate.instant('Record output to file'),
+                sublabel: recording ? recordingPath ?? undefined : undefined,
+                click: () => this.sessionLog.toggleForTab(tab),
             },
         ]
     }

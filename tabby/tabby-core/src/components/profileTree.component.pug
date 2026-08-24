@@ -4,6 +4,12 @@
         .aishell-actions-title
             i.fas.fa-server(aria-hidden='true')
             span {{ 'AIShell tools'|translate }}
+            button.btn.btn-sm.btn-link.aishell-collapse-btn(
+                type='button',
+                [ngbTooltip]='"Collapse sidebar"|translate',
+                [attr.aria-label]='"Collapse sidebar"|translate',
+                (click)='toggleCollapsed()'
+            ): i.fas.fa-chevron-left(aria-hidden='true')
         .aishell-actions-buttons
             button.btn.btn-secondary(
                 type='button',
@@ -29,6 +35,12 @@
                 [attr.aria-label]='"AI assistant"|translate',
                 (click)='openAIShellModal("aiAssistant")'
             ): i.fas.fa-robot(aria-hidden='true')
+            button.btn.btn-secondary(
+                type='button',
+                [ngbTooltip]='"Multi-window log analysis"|translate',
+                [attr.aria-label]='"Multi-window log analysis"|translate',
+                (click)='openAIShellModal("logAnalysis")'
+            ): i.fas.fa-bars-staggered(aria-hidden='true')
 
     input.form-control.form-control-sm.mb-1(
         type='text',

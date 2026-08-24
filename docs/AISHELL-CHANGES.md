@@ -91,8 +91,42 @@
   （`tabby-terminal/terminalToolbar`，作用于当前终端标签），非 AIShell 功能；
   AIShell 的 4 个工具按钮只在左侧树面板和启动页出现
 
-## Windows 打包手册（已跑通）
+## 侧边栏收起 + 会话录制 + 多窗口日志分析（2026-08-24 第二批）
 
+### 侧边栏收起
+- `profileTree.component.ts`：`collapsed` 状态（localStorage.profileTreeCollapsed），宽度 getter
+  收起时返回 0（组件保持挂载，树状态不丢）；监听 `window:aishell:toggle-sidebar` 事件
+- `profileTree.component.pug`：标题行右侧收起按钮（fa-chevron-left）；工具栏第 5 按钮「日志分析」
+- `profileTree.component.scss`：width 过渡动画（body.resizing 时禁用）、收起态隐藏边框与 grabber
+- `tabby-aishell/commands.ts`：`aishell:toggle-sidebar` LeftToolbar 命令（顶栏常驻展开/收起按钮，
+  经 CustomEvent 与树组件解耦通信）
+
+### 终端输出实时落盘
+- 新增 `tabby-aishell/src/services/sessionLog.service.ts`：旁路订阅 `session.binaryOutput$`
+  （不经 enablePassthrough 门控、不受清屏影响，reconnect 经 sessionChanged$ 自动重挂续写同一文件）
+- 写入链：ANSI 剥离（内联 ansi-regex 等价实现）→ 可选每行本地时间戳前缀（行重组器处理 chunk 边界）
+  → `fs.createWriteStream(flags:'a')`
+- 文件命名 `{标签名净化}_{yyyyMMdd_HHmmss}.log`，默认目录 `~/AIShell/logs`（可配置）
+- 开启方式：全局自动（设置开关）+ 单标签右键菜单「录制输出到文件」
+- 设置弹窗改为「AIShell 设置」：AI 区块（新增 maxContextChars）+ 会话录制区块（开关/目录/两个选项）
+- 模块构造函数里 `SessionLogService.initialize()` 启动跟踪
+
+### 多窗口日志分析工作台
+- 新增 `logTimeline.service.ts`：行内时间戳解析（ISO/日期时间/syslog/[HH:mm:ss]）、
+  多来源合并排序（无时间戳行继承上一行时间）、`smartTruncate`（头 25% + 尾 75%）
+- 新增 `logAnalysisModal.component.*`：左栏多选终端标签（xterm 滚动缓冲捕获）+ 日志文件加载；
+  右栏合并时间线（[时间] [模块] 内容）+ 导出 + AI 分析（运维 SRE 专用 system prompt）
+- 打开入口：树面板第 5 按钮、AI 助手弹窗快捷动作「多窗口日志」、标签右键 AI 子菜单、StartPage 命令
+- AI 助手弹窗 QoL：Enter 发送 / Shift+Enter 换行；新消息自动滚动到底部
+- `terminalContext.service.ts`：新增 `getOpenTerminalTabs()`
+
+### 已知边界
+- 日志时间戳解析忽略时区偏移（同批日志通常同时区，排序不受影响）
+- vim 等全屏程序输出也会被录制（剥离 ANSI 后仍可读）
+- 渲染进程 electron.dialog 不可用时文件选择按钮给出提示（目录可手输）
+- xterm 滚动缓冲捕获受 scrollback 上限约束；长周期日志建议开启实时落盘后用文件分析
+
+## Windows 打包手册（已跑通）
 
 产物：`tabby/dist/` 下
 - `tabby-*-setup-x64.exe`：NSIS 安装包（含 VC++ 运行库）

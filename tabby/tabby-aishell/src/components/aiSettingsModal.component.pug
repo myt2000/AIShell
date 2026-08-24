@@ -1,8 +1,9 @@
 .modal-content
     .modal-header
-        h5.modal-title {{ 'AI Assistant Settings'|translate }}
+        h5.modal-title {{ 'AIShell Settings'|translate }}
         button.btn.btn-link.close(type='button', (click)='cancel()') ×
     .modal-body
+        h6.settings-section-title {{ 'AI assistant'|translate }}
         .mb-3
             .form-check.form-switch
                 input.form-check-input(type='checkbox', id='ai-enabled', [(ngModel)]='enabled')
@@ -33,7 +34,36 @@
             label.form-label {{ 'Max output tokens'|translate }}
             input.form-control(type='number', [(ngModel)]='maxOutputTokens', min='256', max='32768')
 
-        .form-text.text-muted {{ 'The API key is stored in the local Tabby config file.'|translate }}
+        .mb-3
+            label.form-label {{ 'Max context characters for AI'|translate }}
+            input.form-control(type='number', [(ngModel)]='maxContextChars', min='2000', max='200000', step='1000')
+            .form-text.text-muted {{ 'Logs longer than this are smart-truncated (head + tail kept) before being sent to the AI.'|translate }}
+
+        .form-text.text-muted.mb-2 {{ 'The API key is stored in the local Tabby config file.'|translate }}
+
+        hr
+
+        h6.settings-section-title {{ 'Session recording'|translate }}
+        .mb-3
+            .form-check.form-switch
+                input.form-check-input(type='checkbox', id='session-log-enabled', [(ngModel)]='sessionLogEnabled')
+                label.form-check-label(for='session-log-enabled') {{ 'Auto-record all terminal sessions'|translate }}
+            .form-text.text-muted {{ 'Individual tabs can also be recorded via the tab context menu.'|translate }}
+
+        .mb-3
+            label.form-label {{ 'Log directory'|translate }}
+            .input-group
+                input.form-control(type='text', [(ngModel)]='sessionLogDirectory', placeholder='~/AIShell/logs')
+                button.btn.btn-secondary(type='button', (click)='browseDirectory()') {{ 'Browse…'|translate }}
+
+        .mb-3
+            .form-check
+                input.form-check-input(type='checkbox', id='session-log-strip-ansi', [(ngModel)]='sessionLogStripAnsi')
+                label.form-check-label(for='session-log-strip-ansi') {{ 'Strip ANSI escape codes'|translate }}
+            .form-check
+                input.form-check-input(type='checkbox', id='session-log-timestamps', [(ngModel)]='sessionLogAddTimestamps')
+                label.form-check-label(for='session-log-timestamps') {{ 'Prefix each line with a local timestamp'|translate }}
+            .form-text.text-muted {{ 'Recording is a passive tap on terminal output and does not affect rendering or performance-sensitive paths.'|translate }}
     .modal-footer
         button.btn.btn-primary(type='button', (click)='save()') {{ 'Save'|translate }}
         button.btn.btn-secondary(type='button', (click)='cancel()') {{ 'Cancel'|translate }}

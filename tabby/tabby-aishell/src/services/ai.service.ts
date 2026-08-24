@@ -7,6 +7,8 @@ export interface AiSettings {
     apiKey: string
     model: string
     maxOutputTokens: number
+    /** 发送给 AI 的上下文字符上限（日志分析等场景做智能截断） */
+    maxContextChars: number
 }
 
 export interface AiChatMessage {
@@ -35,6 +37,7 @@ export class AiService {
             apiKey: ai.apiKey ?? '',
             model: ai.model ?? '',
             maxOutputTokens: ai.maxOutputTokens ?? 2048,
+            maxContextChars: ai.maxContextChars ?? 24000,
         }
     }
 

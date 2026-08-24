@@ -1,4 +1,4 @@
-import { Component } from '@angular/core'
+import { Component, ElementRef, ViewChild } from '@angular/core'
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 
 import { BaseComponent, TranslateService } from 'tabby-core'
@@ -7,6 +7,7 @@ import { AiChatMessage } from '../services/ai.service'
 import { AiService } from '../services/ai.service'
 import { TerminalContextService } from '../services/terminalContext.service'
 import { AiSettingsModalComponent } from './aiSettingsModal.component'
+import { LogAnalysisModalComponent } from './logAnalysisModal.component'
 
 interface UiMessage {
     role: 'user' | 'assistant'
@@ -31,6 +32,8 @@ export class AiAssistantModalComponent extends BaseComponent {
 
     /** 打开时预置的首条请求（来自右键菜单） */
     presetPrompt: string|null = null
+
+    @ViewChild('history') historyElement: ElementRef|undefined
 
     private systemPromptBase = '你是一名资深的 Linux 运维工程师助手。用户在使用 SSH 终端工具。回答使用中文，简洁准确；给出的命令要给出解释。'
 
@@ -60,12 +63,36 @@ export class AiAssistantModalComponent extends BaseComponent {
         this.ngbModal.open(AiSettingsModalComponent)
     }
 
+    /** AISHELL: 多窗口日志分析工作台 */
+    openLogAnalysis (): void {
+        this.ngbModal.open(LogAnalysisModalComponent, { size: 'lg' })
+    }
+
+    /** AISHELL: Enter 发送、Shift+Enter 换行 */
+    onEnterKey (event: KeyboardEvent): void {
+        if (event.shiftKey) {
+            return // 保留默认行为：插入换行
+        }
+        event.preventDefault()
+        void this.submit()
+    }
+
+    private scrollHistoryToBottom (): void {
+        setTimeout(() => {
+            const el = this.historyElement?.nativeElement
+            if (el) {
+                el.scrollTop = el.scrollHeight
+            }
+        })
+    }
+
     async submit (overridePrompt?: string): Promise<void> {
         const prompt = (overridePrompt ?? this.input).trim()
         if (!prompt || this.busy) { return }
         this.input = ''
         this.messages.push({ role: 'user', content: prompt })
         this.busy = true
+        this.scrollHistoryToBottom()
         try {
             const answer = await this.ai.chat(this.buildChatMessages(prompt))
             this.messages.push({ role: 'assistant', content: answer })
@@ -73,6 +100,7 @@ export class AiAssistantModalComponent extends BaseComponent {
             this.messages.push({ role: 'assistant', content: e?.message ?? String(e), error: true })
         } finally {
             this.busy = false
+            this.scrollHistoryToBottom()
         }
     }
 

@@ -2880,3 +2880,151 @@ msgstr "AIShell 插件不可用"
 #: tabby-core/src/components/profileTree.component.ts
 msgid "Rebuild or reinstall the AIShell plugin and restart Tabby."
 msgstr "请重新构建或重装 AIShell 插件后重启 Tabby。"
+
+#: tabby-core/src/components/profileTree.component.pug
+msgid "Collapse sidebar"
+msgstr "收起侧边栏"
+
+#: tabby-core/src/components/profileTree.component.pug
+msgid "Multi-window log analysis"
+msgstr "多窗口日志分析"
+
+#: tabby-aishell/src/commands.ts
+msgid "Toggle sidebar"
+msgstr "切换侧边栏"
+
+#: tabby-aishell/src/services/sessionLog.service.ts
+msgid "Recording stopped"
+msgstr "已停止录制"
+
+#: tabby-aishell/src/services/sessionLog.service.ts
+msgid "Recording terminal output"
+msgstr "正在录制终端输出"
+
+#: tabby-aishell/src/services/sessionLog.service.ts
+msgid "Failed to start recording"
+msgstr "启动录制失败"
+
+#: tabby-aishell/src/contextMenu.ts
+msgid "Multi-window log analysis…"
+msgstr "多窗口日志分析…"
+
+#: tabby-aishell/src/contextMenu.ts
+msgid "Stop recording output"
+msgstr "停止录制输出"
+
+#: tabby-aishell/src/contextMenu.ts
+msgid "Record output to file"
+msgstr "录制输出到文件"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Terminal tabs"
+msgstr "终端标签页"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Refresh tab list"
+msgstr "刷新标签列表"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Log files"
+msgstr "日志文件"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Add log files…"
+msgstr "添加日志文件…"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Lines per window"
+msgstr "每窗口捕获行数"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Build timeline"
+msgstr "生成时间线"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Analyze with AI"
+msgstr "AI 分析"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "lines"
+msgstr "行"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "modules"
+msgstr "模块"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Select targets and build the timeline. Logs from all modules will be merged and sorted by time."
+msgstr "选择目标后生成时间线：各模块日志将合并并按时间排序。"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "Only the first 5000 lines are shown; export for the full timeline."
+msgstr "仅显示前 5000 行，导出可获取完整时间线。"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.pug
+msgid "AI analysis result"
+msgstr "AI 分析结果"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.ts
+msgid "File picker is unavailable in this environment"
+msgstr "当前环境不支持文件选择对话框"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.ts
+msgid "Failed to read file"
+msgstr "读取文件失败"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.ts
+msgid "Merged timeline exported"
+msgstr "合并时间线已导出"
+
+#: tabby-aishell/src/components/logAnalysisModal.component.ts
+msgid "Failed to write file"
+msgstr "写入文件失败"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "AIShell Settings"
+msgstr "AIShell 设置"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Max context characters for AI"
+msgstr "AI 上下文字符上限"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Logs longer than this are smart-truncated (head + tail kept) before being sent to the AI."
+msgstr "超过该长度的日志会智能截断（保留开头与结尾）后再发送给 AI。"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Session recording"
+msgstr "会话录制"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Auto-record all terminal sessions"
+msgstr "自动录制所有终端会话"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Individual tabs can also be recorded via the tab context menu."
+msgstr "也可以通过标签页右键菜单单独录制某个标签。"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Log directory"
+msgstr "日志目录"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Browse…"
+msgstr "浏览…"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Strip ANSI escape codes"
+msgstr "剥离 ANSI 转义序列"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Prefix each line with a local timestamp"
+msgstr "每行添加本地时间戳前缀"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "Recording is a passive tap on terminal output and does not affect rendering or performance-sensitive paths."
+msgstr "录制是终端输出的旁路监听，不影响渲染与性能。"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.pug
+msgid "Multi-window logs"
+msgstr "多窗口日志"

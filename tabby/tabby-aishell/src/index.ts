@@ -12,9 +12,12 @@ import { AiAssistantModalComponent } from './components/aiAssistantModal.compone
 import { AiSettingsModalComponent } from './components/aiSettingsModal.component'
 import { BatchCommandModalComponent } from './components/batchCommandModal.component'
 import { FromTemplateModalComponent } from './components/fromTemplateModal.component'
+import { LogAnalysisModalComponent } from './components/logAnalysisModal.component'
 import { ManageTemplatesModalComponent } from './components/manageTemplatesModal.component'
 import { AiService } from './services/ai.service'
 import { BatchCommandService } from './services/batchCommand.service'
+import { LogTimelineService } from './services/logTimeline.service'
+import { SessionLogService } from './services/sessionLog.service'
 import { TemplateService } from './services/template.service'
 import { TerminalContextService } from './services/terminalContext.service'
 import { VariableSubstitutionService } from './services/variableSubstitution.service'
@@ -33,6 +36,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
         BatchCommandModalComponent,
         AiAssistantModalComponent,
         AiSettingsModalComponent,
+        LogAnalysisModalComponent,
     ],
     entryComponents: [
         FromTemplateModalComponent,
@@ -40,6 +44,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
         BatchCommandModalComponent,
         AiAssistantModalComponent,
         AiSettingsModalComponent,
+        LogAnalysisModalComponent,
     ],
     providers: [
         TemplateService,
@@ -47,12 +52,18 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
         BatchCommandService,
         AiService,
         TerminalContextService,
+        LogTimelineService,
         { provide: ConfigProvider, useClass: AIShellConfigProvider, multi: true },
         { provide: CommandProvider, useClass: AIShellCommandProvider, multi: true },
         { provide: TabContextMenuItemProvider, useClass: AiContextMenuProvider, multi: true },
     ],
 })
-export default class AIShellModule { }
+export default class AIShellModule {
+    constructor (sessionLog: SessionLogService) {
+        // AISHELL: 会话录制服务随插件启动，跟踪所有终端标签
+        sessionLog.initialize()
+    }
+}
 
 export * from './api'
 export { TemplateService } from './services/template.service'
@@ -60,8 +71,11 @@ export { VariableSubstitutionService } from './services/variableSubstitution.ser
 export { BatchCommandService } from './services/batchCommand.service'
 export { AiService } from './services/ai.service'
 export { TerminalContextService } from './services/terminalContext.service'
+export { LogTimelineService } from './services/logTimeline.service'
+export { SessionLogService } from './services/sessionLog.service'
 export { FromTemplateModalComponent } from './components/fromTemplateModal.component'
 export { ManageTemplatesModalComponent } from './components/manageTemplatesModal.component'
 export { BatchCommandModalComponent } from './components/batchCommandModal.component'
 export { AiAssistantModalComponent } from './components/aiAssistantModal.component'
 export { AiSettingsModalComponent } from './components/aiSettingsModal.component'
+export { LogAnalysisModalComponent } from './components/logAnalysisModal.component'

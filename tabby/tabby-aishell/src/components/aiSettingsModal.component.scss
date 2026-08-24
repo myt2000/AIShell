@@ -1,3 +1,11 @@
 .modal-content {
     min-width: 460px;
 }
+
+/* AISHELL: 分区标题（AI 助手 / 会话录制） */
+.settings-section-title {
+    color: var(--theme-primary);
+    font-weight: 600;
+    font-size: .85rem;
+}
+

@@ -1,7 +1,7 @@
 import { Component } from '@angular/core'
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { TranslateService } from '@ngx-translate/core'
-import { BaseComponent } from 'tabby-core'
+
+import { BaseComponent, TranslateService } from 'tabby-core'
 
 import { AiChatMessage } from '../services/ai.service'
 import { AiService } from '../services/ai.service'

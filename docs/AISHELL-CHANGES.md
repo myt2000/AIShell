@@ -55,6 +55,68 @@
 - 拖拽暂不支持组内排序（树按名称排序），只支持跨分组移动与分组重新挂载
 - 批量编辑公共字段入口暂未做（模板同步可覆盖此场景大部分需求）
 
+## 启动卡死问题修复记录（2026-08-24）
+
+现象：dev 和打包版都卡在 Tabby 启动页。根因与修复：
+
+1. **`@tabby-gang/windows-process-tree` 未安装**（主因）
+   - 它是 `app/package.json` 的 **optionalDependencies**，首次安装因网络失败被 yarn 静默跳过
+   - `tabby-electron` 的 platform.service.ts 中它与 `windows-native-registry` 在同一个
+     try 块里赋值，前者 require 失败导致后者永远为 undefined，Angular 注入
+     SSHService 时崩溃
+   - 修复：手动从 npmmirror 拉取 tarball 解压到 `app/node_modules/@tabby-gang/windows-process-tree/`
+     （自带预编译 .node），并对其 binding.gyp 打了 Spectre 补丁：
+     `app/patches/@tabby-gang+windows-process-tree+0.6.1.patch`
+   - **注意**：如果重装依赖后再现卡启动页，优先检查该包是否存在：
+     `ls app/node_modules/@tabby-gang/windows-process-tree`
+2. **tabby-aishell 的 TranslateService 导入源错误**
+   - 不能从 `@ngx-translate/core` 直接导入（不在 webpack externals，会打包出私有副本，
+     导致 NullInjectorError）；必须与其他插件一致 **从 'tabby-core' 导入**
+3. native 模块 ABI：`yarn install --force` 会用 npm 预编译版（ABI 137）覆盖
+   electron 重编译版（ABI 139），重装依赖后必须重跑 `node scripts/build-native.mjs`
+4. 已将 4 个第三方插件（tabby-post-connect-actions / better-sidebar / ai-assistant /
+   workspace-manager）从 `%APPDATA%\tabby\plugins\node_modules` 移除备份到
+   `%APPDATA%\tabby\plugins-disabled-backup`（它们与本项目的内置功能重复）
+
+## Windows 打包手册（已跑通）
+
+
+产物：`tabby/dist/` 下
+- `tabby-*-setup-x64.exe`：NSIS 安装包（含 VC++ 运行库）
+- `tabby-*-portable-x64.zip`：免安装便携版
+
+打包命令（在 tabby/ 目录，需先完成 yarn install + yarn build）：
+```bash
+node scripts/prepackage-plugins.mjs
+node scripts/build-windows.mjs
+```
+
+### 本机环境要点（换机器需重做）
+1. **git tag 必须指向 HEAD**（构建脚本用 `git describe --tags` 算版本号）：
+   `git tag -f v1.0.231-nightly.0 HEAD`
+2. **`tabby/build/vc_redist.exe`**：NSIS 安装包要嵌入 VC++ 运行库，缺失会报
+   `File: "build/vc_redist.exe" -> no files found`。
+   下载：`curl -L -o build/vc_redist.exe https://aka.ms/vs/17/release/vc_redist.x64.exe`（25MB，不入库）
+3. **winCodeSign 符号链接问题**（非管理员 Windows 打包的通病）：官方压缩包含两个 macOS
+   符号链接，7za 解压报"客户端没有所需的特权"。解法：预先把无符号链接的净化版内容放到
+   `%LOCALAPPDATA%\electron-builder\Cache\winCodeSign\winCodeSign-2.6.0\`（app-builder
+   检测到目录存在即跳过下载与校验）。净化包制作：从任一次部分解压的缓存目录把
+   `darwin/10.12/lib/libcrypto.dylib、libssl.dylib` 两个 0 字节文件用同名 `.1.0.0.dylib`
+   实文件覆盖后整体 7z 打包即可。
+4. **NSIS 缓存预置**（避免下载后重命名被文件锁打断）：把 `nsis-3.0.4.1.7z`、
+   `nsis-resources-3.4.1.7z` 直接解压到
+   `%LOCALAPPDATA%\electron-builder\Cache\nsis\nsis-3.0.4.1\` 与 `...\nsis-resources-3.4.1\`。
+5. **打包时环境变量**（网络相关）：
+   - `ELECTRON_BUILDER_BINARIES_MIRROR`：指向含 winCodeSign/nsis 的镜像（注意尾部斜杠）
+   - `HTTP_PROXY/HTTPS_PROXY=http://127.0.0.1:7897`：本机代理，github 访问用
+   - 打包版与 dev 版共用 `~/.config/tabby` 配置目录，**同时只能开一个实例**（单实例锁）；
+     dev 版在跑时启动打包版会静默退出，先关掉另一个再开
+
+### 改名称/图标（如需换 AIShell 品牌）
+- `electron-builder.yml`：appId/productName/artifactName/shortcutName
+- `app/package.json`、`build/windows/icon.ico`
+- 注意：productName 变更会改变用户数据目录，现有配置（服务器列表）需手动迁移
+
 ## 环境记录（Phase 0）
 - Node v24.9.0（上游 CI 使用 22，暂用 24，若有 native 编译问题再切）
 - Yarn 1.22.22

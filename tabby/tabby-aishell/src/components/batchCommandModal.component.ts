@@ -1,7 +1,7 @@
 import { Component } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { TranslateService } from '@ngx-translate/core'
-import { BaseComponent, NotificationsService, PartialProfile, PartialProfileGroup, PlatformService, Profile, ProfileGroup, ProfilesService } from 'tabby-core'
+
+import { BaseComponent, NotificationsService, TranslateService, PartialProfile, PartialProfileGroup, PlatformService, Profile, ProfileGroup, ProfilesService } from 'tabby-core'
 
 import { BatchCommandService } from '../services/batchCommand.service'
 

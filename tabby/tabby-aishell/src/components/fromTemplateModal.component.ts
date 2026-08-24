@@ -1,7 +1,7 @@
 import { Component } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { TranslateService } from '@ngx-translate/core'
-import { BaseComponent, NotificationsService, PartialProfileGroup, ProfileGroup, ProfilesService } from 'tabby-core'
+
+import { BaseComponent, NotificationsService, TranslateService, PartialProfileGroup, ProfileGroup, ProfilesService } from 'tabby-core'
 
 import { AIShellTemplate, ServerRow } from '../api'
 import { TemplateService } from '../services/template.service'

@@ -25,7 +25,6 @@ files:
 - '!**/node_modules/**/Release/obj'
 - '!**/node_modules/**/*.{exp,iobj,ipdb,lib}'
 - '!**/node_modules/**/*.vcxproj*'
-- '!**/*.{woff,ttf,otf,eot}'
 - '!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}'
 - '!.editorconfig'
 - '!**/._*'

@@ -8,6 +8,7 @@ import FuzzySearch from 'fuzzy-search'
 import { ConfigService } from '../services/config.service'
 import { ProfilesService } from '../services/profiles.service'
 import { AppService } from '../services/app.service'
+import { NotificationsService } from '../services/notifications.service'
 import { PlatformService } from '../api/platform'
 import { ProfileProvider } from '../api/index'
 import { PartialProfileGroup, ProfileGroup, PartialProfile, Profile } from '../index'
@@ -64,6 +65,7 @@ export class ProfileTreeComponent extends BaseComponent {
         private profilesService: ProfilesService,
         private translate: TranslateService,
         private ngbModal: NgbModal,
+        private notifications: NotificationsService,
     ) {
         super()
     }
@@ -192,6 +194,10 @@ export class ProfileTreeComponent extends BaseComponent {
             this.ngbModal.open(component, { size: 'lg' })
         } catch (e) {
             console.error('Failed to open AIShell modal:', e)
+            this.notifications.error(
+                this.translate.instant('AIShell plugin is unavailable'),
+                this.translate.instant('Rebuild or reinstall the AIShell plugin and restart Tabby.'),
+            )
         }
     }
 

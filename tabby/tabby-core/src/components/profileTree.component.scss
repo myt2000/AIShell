@@ -8,6 +8,43 @@ input {
     border: 1px solid var(--theme-secondary);
 }
 
+/* AISHELL: 独立的管理工具栏，避免与服务器树和筛选框混在一起 */
+.aishell-actions {
+    padding: .5rem;
+    background: var(--theme-bg);
+    border: 1px solid var(--theme-secondary);
+    border-radius: .4rem;
+
+    .aishell-actions-title {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        margin-bottom: .45rem;
+        color: var(--theme-secondary-fg);
+        font-size: .75rem;
+        font-weight: 600;
+        letter-spacing: .02em;
+    }
+
+    .aishell-actions-buttons {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .3rem;
+
+        .btn {
+            min-width: 0;
+            min-height: 2rem;
+            padding: .35rem;
+            line-height: 1;
+
+            &:focus-visible {
+                outline: 2px solid var(--theme-primary);
+                outline-offset: 1px;
+            }
+        }
+    }
+}
+
 .profile-tree {
     max-height: 100%;
     overflow-y: scroll;

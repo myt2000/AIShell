@@ -2868,3 +2868,15 @@ msgstr "请诊断以下最近的终端输出，找出可能的问题并给出处
 #: tabby-aishell/src/contextMenu.ts
 msgid "Analyze the logs below, summarize key events and anomalies:"
 msgstr "请分析以下日志，总结关键事件与异常："
+
+#: tabby-core/src/components/profileTree.component.pug
+msgid "AIShell tools"
+msgstr "AIShell 工具"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "AIShell plugin is unavailable"
+msgstr "AIShell 插件不可用"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Rebuild or reinstall the AIShell plugin and restart Tabby."
+msgstr "请重新构建或重装 AIShell 插件后重启 Tabby。"

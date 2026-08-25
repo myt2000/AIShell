@@ -82,8 +82,9 @@ $tab-border-radius: 4px;
     }
 }
 
-/* AISHELL: 横向标签（上/下位置）独立成行：tabs 独占一行，工具栏按钮另起一行；
-   标签固定宽度，超出横向滚动（滚动条隐藏，用左右箭头按钮翻页）。
+/* AISHELL: 横向标签（上/下位置）独立成行：工具栏按钮行在上（作为标题栏区，
+   保留拖拽/双击最大化的原生习惯），标签行在下（避开右上角原生窗口控件与
+   双击最大化行为）。标签固定宽度，超出横向滚动（滚动条隐藏，用左右箭头翻页）。
    注意 .tabs-on-top 类在左/右标签模式下也会设置，需排除竖向布局 */
 .content.tabs-on-top:not(.tabs-on-left):not(.tabs-on-right) > .tab-bar,
 .content.tabs-on-bottom > .tab-bar {
@@ -92,7 +93,7 @@ $tab-border-radius: 4px;
     position: relative;
 
     > .tabs {
-        order: -1;
+        order: 1;
         flex: 1 1 100%;
         min-width: 0;
         overflow-x: auto;
@@ -102,6 +103,11 @@ $tab-border-radius: 4px;
         &::-webkit-scrollbar {
             display: none;
         }
+    }
+
+    /* wrap 布局下 height:100% 会把按钮行撑高，约束回单行高度 */
+    > .window-controls-spacer {
+        height: var(--tabs-height);
     }
 
     ::ng-deep tab-header {
@@ -124,10 +130,10 @@ $tab-border-radius: 4px;
     }
 }
 
-/* AISHELL: 标签行左右滚动箭头（浮在标签行两端） */
+/* AISHELL: 标签行左右滚动箭头（浮在第二行标签行两端，避开第一行按钮区） */
 .aishell-tab-scroll {
     position: absolute;
-    top: 0;
+    top: var(--tabs-height);
     height: var(--tabs-height);
     z-index: 5;
     padding: 0 .5rem;

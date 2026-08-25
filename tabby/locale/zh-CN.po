@@ -3028,3 +3028,27 @@ msgstr "录制是终端输出的旁路监听，不影响渲染与性能。"
 #: tabby-aishell/src/components/aiAssistantModal.component.pug
 msgid "Multi-window logs"
 msgstr "多窗口日志"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Copy profile"
+msgstr "复制服务器"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Copy group"
+msgstr "复制文件夹"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Delete group"
+msgstr "删除文件夹"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Delete group \"{name}\" and its contents?"
+msgstr "删除文件夹“{name}”及其全部内容？"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "{n} profiles, {m} subgroups will be deleted. This cannot be undone."
+msgstr "将删除 {n} 台服务器和 {m} 个子文件夹，此操作不可撤销。"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Paste failed"
+msgstr "粘贴失败"

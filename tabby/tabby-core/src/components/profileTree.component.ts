@@ -50,6 +50,9 @@ export class ProfileTreeComponent extends BaseComponent {
     private visibleProfileIds: string[] = []
     isDragging = false
 
+    // AISHELL: 树内剪贴板（服务器/分组 → 右键分组粘贴）
+    treeClipboard: { kind: 'group', id: string } | { kind: 'profiles', ids: string[] } | null = null
+
 
     panelMinWidth = 200
     panelMaxWidth = 600
@@ -511,6 +514,17 @@ export class ProfileTreeComponent extends BaseComponent {
                 click: () => this.editProfile(profile),
                 enabled: !(profile.isBuiltin ?? profile.isTemplate),
             },
+            // AISHELL: 单台服务器复制（配合分组右键"粘贴"）
+            {
+                type: 'normal',
+                label: this.translate.instant('Copy profile'),
+                click: () => {
+                    if (profile.id) {
+                        this.treeClipboard = { kind: 'profiles', ids: [profile.id] }
+                    }
+                },
+                enabled: !(profile.isBuiltin ?? profile.isTemplate),
+            },
         ])
     }
 
@@ -548,7 +562,91 @@ export class ProfileTreeComponent extends BaseComponent {
                 click: () => this.editProfileGroup(group),
                 enabled: group.editable,
             },
+            // AISHELL: 分组复制/粘贴/删除
+            { type: 'separator' },
+            {
+                type: 'normal',
+                label: this.translate.instant('Copy group'),
+                click: () => {
+                    if (group.id) {
+                        this.treeClipboard = { kind: 'group', id: group.id }
+                    }
+                },
+                enabled: group.editable,
+            },
+            {
+                type: 'normal',
+                label: this.translate.instant('Paste'),
+                click: () => this.pasteIntoGroup(group.id ?? null),
+                enabled: group.editable && !!this.treeClipboard,
+            },
+            { type: 'separator' },
+            {
+                type: 'normal',
+                label: this.translate.instant('Delete group'),
+                click: () => this.deleteGroup(group),
+                enabled: group.editable,
+            },
         ])
+    }
+
+    // AISHELL: ===== 分组复制/粘贴/删除 =====
+
+    /** 粘贴剪贴板内容到目标分组下（分组=整棵子树深拷贝；服务器=拷贝进该分组） */
+    async pasteIntoGroup (targetGroupId: string|null): Promise<void> {
+        if (!this.treeClipboard) { return }
+        try {
+            if (this.treeClipboard.kind === 'group') {
+                const src = this.profilesService.resolveProfileGroup(this.treeClipboard.id)
+                if (!src) {
+                    this.treeClipboard = null
+                    return
+                }
+                await this.profilesService.duplicateProfileGroupTree(src, targetGroupId)
+            } else {
+                const all = await this.profilesService.getProfiles()
+                const selected = this.treeClipboard.ids
+                    .map(id => all.find(p => p.id === id))
+                    .filter((p): p is PartialProfile<Profile> => !!p && !(p.isBuiltin ?? p.isTemplate))
+                if (selected.length) {
+                    const copies = await this.profilesService.duplicateProfiles(selected)
+                    for (const copy of copies) {
+                        copy.group = targetGroupId ?? undefined
+                    }
+                }
+            }
+            await this.config.save()
+        } catch (e) {
+            console.error('AIShell paste failed:', e)
+            this.notifications.error(this.translate.instant('Paste failed'), String(e))
+        }
+    }
+
+    /** 删除分组树：空分组直接删；有内容时确认后连同内容删除 */
+    async deleteGroup (group: PartialProfileGroup<CollapsableProfileGroup>): Promise<void> {
+        if (!group.id) { return }
+        const descendantIds = this.profilesService.collectDescendantGroupIds(group.id)
+        const childGroupCount = descendantIds.length - 1
+        const profileCount = this.collectGroupProfilesRecursively(group).length
+
+        if (profileCount > 0 || childGroupCount > 0) {
+            const result = await this.platform.showMessageBox({
+                type: 'warning',
+                message: this.translate.instant('Delete group "{name}" and its contents?', { name: group.name }),
+                detail: this.translate.instant('{n} profiles, {m} subgroups will be deleted. This cannot be undone.', { n: profileCount, m: childGroupCount }),
+                buttons: [
+                    this.translate.instant('Delete'),
+                    this.translate.instant('Cancel'),
+                ],
+                defaultId: 1,
+                cancelId: 1,
+            })
+            if (result.response !== 0) { return }
+            await this.profilesService.deleteProfileGroupTree(group, { deleteContents: true })
+        } else {
+            await this.profilesService.deleteProfileGroupTree(group, { deleteContents: false })
+        }
+        await this.config.save()
     }
 
     private async tabStateChanged (): Promise<void> {

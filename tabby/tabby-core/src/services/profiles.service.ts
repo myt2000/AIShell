@@ -562,6 +562,94 @@ export class ProfilesService {
         }
     }
 
+    // AISHELL: ===== 分组树操作（删除/复制整棵子树） =====
+
+    /** 收集分组及其全部后代分组的 id */
+    collectDescendantGroupIds (groupId: string): string[] {
+        const ids = [groupId]
+        let changed = true
+        while (changed) {
+            changed = false
+            for (const g of this.config.store.groups) {
+                if (g.parentGroupId && ids.includes(g.parentGroupId) && !ids.includes(g.id)) {
+                    ids.push(g.id)
+                    changed = true
+                }
+            }
+        }
+        return ids
+    }
+
+    /**
+     * 删除分组树（含全部子分组）。
+     * deleteContents=true 时连同组内 profiles 一并删除，否则 profiles 移到未分组。
+     */
+    async deleteProfileGroupTree (group: PartialProfileGroup<ProfileGroup>, options: { deleteContents: boolean }): Promise<{ profiles: number, groups: number }> {
+        const ids = new Set(this.collectDescendantGroupIds(group.id ?? ''))
+        const affectedProfiles = this.config.store.profiles.filter(p => ids.has(p.group ?? ''))
+        if (options.deleteContents) {
+            this.config.store.profiles = this.config.store.profiles.filter(p => !ids.has(p.group ?? ''))
+        } else {
+            for (const profile of affectedProfiles) {
+                delete profile.group
+            }
+        }
+        this.config.store.groups = this.config.store.groups.filter(g => !ids.has(g.id ?? ''))
+        const groupSelectorsHotkeys = { ...this.config.store.hotkeys['group-selectors'] }
+        let hotkeysTouched = false
+        for (const id of ids) {
+            if (Object.prototype.hasOwnProperty.call(groupSelectorsHotkeys, id)) {
+                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+                delete groupSelectorsHotkeys[id]
+                hotkeysTouched = true
+            }
+        }
+        if (hotkeysTouched) {
+            this.config.store.hotkeys['group-selectors'] = groupSelectorsHotkeys
+        }
+        return { profiles: affectedProfiles.length, groups: ids.size }
+    }
+
+    /**
+     * 深拷贝分组树（全部子分组 + 组内 profiles）到目标父分组下。
+     * 根分组副本名加 " copy" 后缀，其余保持原名。
+     */
+    async duplicateProfileGroupTree (group: PartialProfileGroup<ProfileGroup>, targetParentGroupId: string|null): Promise<void> {
+        const subtreeIds = this.collectDescendantGroupIds(group.id ?? '')
+        const srcGroups = subtreeIds
+            .map(id => this.config.store.groups.find(g => g.id === id))
+            .filter((g): g is PartialProfileGroup<ProfileGroup> => !!g)
+        const idMap = new Map<string, string>()
+
+        for (const src of srcGroups) {
+            const clone = deepClone({ ...src, profiles: undefined, editable: undefined, collapsed: undefined })
+            delete clone.id
+            clone.name = src.id === group.id ? `${src.name} copy` : src.name
+            clone.parentGroupId = src.id === group.id ? (targetParentGroupId ?? undefined) : undefined
+            await this.newProfileGroup(clone)
+            idMap.set(src.id ?? '', clone.id ?? '')
+        }
+        // 第二遍：子分组挂到对应的新父分组
+        for (const src of srcGroups) {
+            if (src.id === group.id || !src.parentGroupId) { continue }
+            const newId = idMap.get(src.id ?? '')
+            const newParentId = idMap.get(src.parentGroupId ?? '')
+            if (!newId || !newParentId) { continue }
+            const cGroup = this.config.store.groups.find(g => g.id === newId)
+            if (cGroup) {
+                cGroup.parentGroupId = newParentId
+            }
+        }
+        // 组内 profiles 拷贝到对应新分组
+        const profilesInTree = this.config.store.profiles.filter(p => idMap.has(p.group ?? ''))
+        for (const profile of profilesInTree) {
+            const copy = deepClone(profile)
+            delete copy.id
+            copy.group = idMap.get(profile.group ?? '')
+            await this.newProfile(copy)
+        }
+    }
+
     /**
     * Delete a ProfileGroup from config
     */

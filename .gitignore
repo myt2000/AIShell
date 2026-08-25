@@ -4,4 +4,5 @@ config.yaml
 config.yaml.bak
 .zcode/
 tabby/build/vc_redist.exe
-SessionsSessions-backup-securecrt-20260825/
+Sessions/
+Sessions-backup-securecrt-20260825/

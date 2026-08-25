@@ -111,11 +111,12 @@ $tab-border-radius: 4px;
 }
 
 /* AISHELL: Windows 细边框且无标题栏时，原生窗口控件（─ □ ✕）悬浮在窗口右上角，
-   会压住标签行末尾——标签行右侧预留同等宽度，右滚动箭头相应左移。
+   会压住标签行末尾。注意不能用 padding-right：滚动容器的 padding 属于滚动内容
+   （滚到底才出现），可视区域仍会伸进控件下面；必须用 margin-right 收缩容器本身。
    platform-win32 是宿主(app-root)上的类，须用 :host-context 跨样式封装匹配 */
 :host-context(.platform-win32) .content.tabs-on-top:not(.tabs-on-left):not(.tabs-on-right):not(.tabs-titlebar-enabled) > .tab-bar {
     > .tabs {
-        padding-right: 138px;
+        margin-right: 138px;
     }
 
     .aishell-tab-scroll.right {

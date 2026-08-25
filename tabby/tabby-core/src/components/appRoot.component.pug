@@ -31,17 +31,20 @@ title-bar(
             && (config.store.appearance.tabsLocation == "top" || config.store.appearance.tabsLocation == "left") \
             && !config.store.showProfileTree')
             // AISHELL: 标签溢出时的左右滚动按钮（横向标签独立成行时）
+            // 双击必须拦截：箭头与标签行是兄弟节点，冒泡到 .tab-bar 会触发最大化切换
             button.btn.btn-sm.btn-secondary.aishell-tab-scroll.left(
                 *ngIf='!hasVerticalTabs() && tabsCanScrollLeft',
                 type='button',
                 [ngbTooltip]='"Scroll tabs left"|translate',
-                (click)='scrollTabs(-1)'
+                (click)='scrollTabs(-1)',
+                (dblclick)='$event.stopPropagation()'
             ): i.fas.fa-chevron-left(aria-hidden='true')
             button.btn.btn-sm.btn-secondary.aishell-tab-scroll.right(
                 *ngIf='!hasVerticalTabs() && tabsCanScrollRight',
                 type='button',
                 [ngbTooltip]='"Scroll tabs right"|translate',
-                (click)='scrollTabs(1)'
+                (click)='scrollTabs(1)',
+                (dblclick)='$event.stopPropagation()'
             ): i.fas.fa-chevron-right(aria-hidden='true')
             .tabs(
                 #tabsContainer,

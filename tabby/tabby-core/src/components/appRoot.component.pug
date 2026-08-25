@@ -30,7 +30,22 @@ title-bar(
             && config.store.appearance.frame == "thin" \
             && (config.store.appearance.tabsLocation == "top" || config.store.appearance.tabsLocation == "left") \
             && !config.store.showProfileTree')
+            // AISHELL: 标签溢出时的左右滚动按钮（横向标签独立成行时）
+            button.btn.btn-sm.btn-secondary.aishell-tab-scroll.left(
+                *ngIf='!hasVerticalTabs() && tabsCanScrollLeft',
+                type='button',
+                [ngbTooltip]='"Scroll tabs left"|translate',
+                (click)='scrollTabs(-1)'
+            ): i.fas.fa-chevron-left(aria-hidden='true')
+            button.btn.btn-sm.btn-secondary.aishell-tab-scroll.right(
+                *ngIf='!hasVerticalTabs() && tabsCanScrollRight',
+                type='button',
+                [ngbTooltip]='"Scroll tabs right"|translate',
+                (click)='scrollTabs(1)'
+            ): i.fas.fa-chevron-right(aria-hidden='true')
             .tabs(
+                #tabsContainer,
+                (scroll)='updateTabScrollArrows()',
                 cdkDropList,
                 [cdkDropListOrientation]='(config.store.appearance.tabsLocation == "top" || config.store.appearance.tabsLocation == "bottom") ? "horizontal" : "vertical"',
                 (cdkDropListDropped)='onTabsReordered($event)',

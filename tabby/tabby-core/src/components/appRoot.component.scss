@@ -82,6 +82,51 @@ $tab-border-radius: 4px;
     }
 }
 
+/* AISHELL: 横向标签（上/下位置）独立成行：tabs 独占一行，工具栏按钮另起一行；
+   标签固定宽度，超出横向滚动（滚动条隐藏，用左右箭头按钮翻页） */
+.content.tabs-on-top > .tab-bar, .content.tabs-on-bottom > .tab-bar {
+    flex-wrap: wrap;
+    height: auto;
+    position: relative;
+
+    > .tabs {
+        order: -1;
+        flex: 1 1 100%;
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    ::ng-deep tab-header {
+        flex: 0 0 200px !important;
+        width: 200px !important;
+    }
+}
+
+/* AISHELL: 标签行左右滚动箭头（浮在标签行两端） */
+.aishell-tab-scroll {
+    position: absolute;
+    top: 0;
+    height: var(--tabs-height);
+    z-index: 5;
+    padding: 0 .5rem;
+    line-height: 1;
+    opacity: .9;
+
+    &.left {
+        left: 0;
+    }
+
+    &.right {
+        right: 0;
+    }
+}
+
 .content.tabs-on-right > .tab-bar {
     .tabs {
         // Account for WCO on Windows.

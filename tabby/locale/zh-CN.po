@@ -3076,3 +3076,11 @@ msgstr "“{source}” → “{target}”（含 {n} 台服务器、{m} 个子文
 #: tabby-settings/src/components/editProfileGroupModal.component.pug
 msgid "Reset to default folder icon"
 msgstr "恢复默认文件夹图标"
+
+#: tabby-core/src/components/appRoot.component.pug
+msgid "Scroll tabs left"
+msgstr "向左滚动标签"
+
+#: tabby-core/src/components/appRoot.component.pug
+msgid "Scroll tabs right"
+msgstr "向右滚动标签"

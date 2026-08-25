@@ -39,7 +39,7 @@ profileDefaults:
   __nonStructural: true
   ssh:
     disableDynamicTitle: true
-recoverTabs: true
+recoverTabs: false # AISHELL: 服务器管理工具不做会话恢复，启动干净进入起始页；上游默认 true
 enableAnalytics: true
 enableWelcomeTab: true
 electronFlags:

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { Component, Input, HostListener, HostBinding, ViewChildren, ViewChild } from '@angular/core'
+import { Component, Input, HostListener, HostBinding, ViewChildren, ViewChild, ElementRef } from '@angular/core'
 import { trigger, style, animate, transition, state } from '@angular/animations'
 import { NgbDropdown, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { CdkDragDrop } from '@angular/cdk/drag-drop'
@@ -174,6 +174,10 @@ export class AppRootComponent {
             this.activeTransfersDropdown.open()
         })
 
+        // AISHELL: 标签行溢出滚动箭头状态
+        this.app.tabsChanged$.subscribe(() => setTimeout(() => this.updateTabScrollArrows()))
+        this.app.activeTabChange$.subscribe(() => setTimeout(() => this.updateTabScrollArrows()))
+
         config.ready$.toPromise().then(async () => {
             this.leftToolbarButtons = await this.getToolbarButtons(false)
             this.rightToolbarButtons = await this.getToolbarButtons(true)
@@ -222,6 +226,34 @@ export class AppRootComponent {
 
     hasVerticalTabs () {
         return this.config.store.appearance.tabsLocation === 'left' || this.config.store.appearance.tabsLocation === 'right'
+    }
+
+    // AISHELL: 标签行溢出滚动（横向标签独立成行，固定宽度，超出显示左右箭头）
+    tabsCanScrollLeft = false
+    tabsCanScrollRight = false
+    @ViewChild('tabsContainer') tabsContainer: ElementRef<HTMLDivElement>|undefined
+
+    updateTabScrollArrows (): void {
+        const el = this.tabsContainer?.nativeElement
+        if (!el) {
+            this.tabsCanScrollLeft = false
+            this.tabsCanScrollRight = false
+            return
+        }
+        this.tabsCanScrollLeft = el.scrollLeft > 2
+        this.tabsCanScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 2
+    }
+
+    scrollTabs (direction: number): void {
+        const el = this.tabsContainer?.nativeElement
+        if (!el) { return }
+        el.scrollLeft += direction * Math.max(160, el.clientWidth * 0.8)
+        this.updateTabScrollArrows()
+    }
+
+    @HostListener('window:resize')
+    onWindowResize (): void {
+        this.updateTabScrollArrows()
     }
 
     get targetTabSize (): any {

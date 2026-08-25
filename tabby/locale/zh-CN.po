@@ -3084,3 +3084,11 @@ msgstr "向左滚动标签"
 #: tabby-core/src/components/appRoot.component.pug
 msgid "Scroll tabs right"
 msgstr "向右滚动标签"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Delete profile"
+msgstr "删除服务器"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Delete profile \"{name}\"?"
+msgstr "删除服务器“{name}”？"

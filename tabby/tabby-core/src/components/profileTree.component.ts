@@ -554,7 +554,36 @@ export class ProfileTreeComponent extends BaseComponent {
                 },
                 enabled: !(profile.isBuiltin ?? profile.isTemplate),
             },
+            // AISHELL: 单台服务器删除
+            { type: 'separator' },
+            {
+                type: 'normal',
+                label: this.translate.instant('Delete profile'),
+                click: () => this.deleteProfile(profile),
+                enabled: !(profile.isBuiltin ?? profile.isTemplate),
+            },
         ])
+    }
+
+    /** AISHELL: 删除单台服务器（带确认） */
+    async deleteProfile (profile: PartialProfile<Profile>): Promise<void> {
+        if (profile.isBuiltin || profile.isTemplate) { return }
+        const result = await this.platform.showMessageBox({
+            type: 'warning',
+            message: this.translate.instant('Delete profile "{name}"?', { name: profile.name }),
+            buttons: [
+                this.translate.instant('Delete'),
+                this.translate.instant('Cancel'),
+            ],
+            defaultId: 1,
+            cancelId: 1,
+        })
+        if (result.response !== 0) { return }
+        const id = profile.id
+        if (!id) { return }
+        await this.profilesService.bulkDeleteProfiles(p => p.id === id)
+        this.selection.delete(id)
+        await this.config.save()
     }
 
     async groupContextMenu (group: PartialProfileGroup<CollapsableProfileGroup>, event: MouseEvent): Promise<void> {

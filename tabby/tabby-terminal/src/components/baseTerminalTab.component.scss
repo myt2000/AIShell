@@ -44,20 +44,14 @@
         }
     }
 
+    /* AISHELL: 扳手（终端工具栏开关）放在终端右下角——顶部工具栏展开时
+       右端的「固定」按钮会盖住原 right:34/top:5 位置，挪到右下彻底错开 */
     > .toolbar-pin-button {
         position: absolute;
-        right: 34px;
-        top: 5px;
+        right: 12px;
+        bottom: 12px;
         z-index: 4;
         background: #00000047;
-        transition: opacity .2s ease;
-    }
-
-    /* AISHELL: 工具栏展开时扳手淡出，避免与右端「固定」按钮互相遮挡。
-       只降透明度、不位移不禁点击命中——位移或 pointer-events:none 会触发
-       mouseleave → 1s 后隐藏 → 扳手回位再 mouseenter 的循环闪烁 */
-    &.toolbar-revealed > .toolbar-pin-button {
-        opacity: 0;
     }
 
     &.toolbar-pinned > .terminal-toolbar-spacer {

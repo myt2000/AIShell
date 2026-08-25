@@ -4,3 +4,4 @@ config.yaml
 config.yaml.bak
 .zcode/
 tabby/build/vc_redist.exe
+Sessions

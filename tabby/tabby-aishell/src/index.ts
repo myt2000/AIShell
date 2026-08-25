@@ -11,6 +11,7 @@ import { AiContextMenuProvider } from './contextMenu'
 import { AiAssistantModalComponent } from './components/aiAssistantModal.component'
 import { AiSettingsModalComponent } from './components/aiSettingsModal.component'
 import { BatchCommandModalComponent } from './components/batchCommandModal.component'
+import { BatchPasswordModalComponent } from './components/batchPasswordModal.component'
 import { FromTemplateModalComponent } from './components/fromTemplateModal.component'
 import { LogAnalysisModalComponent } from './components/logAnalysisModal.component'
 import { ManageTemplatesModalComponent } from './components/manageTemplatesModal.component'
@@ -34,6 +35,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
         FromTemplateModalComponent,
         ManageTemplatesModalComponent,
         BatchCommandModalComponent,
+        BatchPasswordModalComponent,
         AiAssistantModalComponent,
         AiSettingsModalComponent,
         LogAnalysisModalComponent,
@@ -42,6 +44,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
         FromTemplateModalComponent,
         ManageTemplatesModalComponent,
         BatchCommandModalComponent,
+        BatchPasswordModalComponent,
         AiAssistantModalComponent,
         AiSettingsModalComponent,
         LogAnalysisModalComponent,
@@ -76,6 +79,7 @@ export { SessionLogService } from './services/sessionLog.service'
 export { FromTemplateModalComponent } from './components/fromTemplateModal.component'
 export { ManageTemplatesModalComponent } from './components/manageTemplatesModal.component'
 export { BatchCommandModalComponent } from './components/batchCommandModal.component'
+export { BatchPasswordModalComponent } from './components/batchPasswordModal.component'
 export { AiAssistantModalComponent } from './components/aiAssistantModal.component'
 export { AiSettingsModalComponent } from './components/aiSettingsModal.component'
 export { LogAnalysisModalComponent } from './components/logAnalysisModal.component'

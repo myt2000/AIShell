@@ -196,7 +196,7 @@ export class ProfileTreeComponent extends BaseComponent {
 
     // AISHELL: ===== AIShell 功能入口（模板/批量命令/AI，弹窗由 tabby-aishell 提供） =====
 
-    openAIShellModal (which: 'fromTemplate'|'manageTemplates'|'batchCommand'|'aiAssistant'|'logAnalysis'): void {
+    openAIShellModal (which: 'fromTemplate'|'manageTemplates'|'batchCommand'|'aiAssistant'|'logAnalysis'|'batchPassword', setup?: (instance: any) => void): void {
         try {
             const aishell = window['nodeRequire']('tabby-aishell')
             const components = {
@@ -205,12 +205,16 @@ export class ProfileTreeComponent extends BaseComponent {
                 batchCommand: aishell.BatchCommandModalComponent,
                 aiAssistant: aishell.AiAssistantModalComponent,
                 logAnalysis: aishell.LogAnalysisModalComponent,
+                batchPassword: aishell.BatchPasswordModalComponent,
             }
             const component = components[which]
             if (!component) {
                 throw new Error(`Unknown AIShell modal: ${which}`)
             }
-            this.ngbModal.open(component, { size: 'lg' })
+            const modal = this.ngbModal.open(component, { size: 'lg' })
+            if (setup) {
+                setup(modal.componentInstance)
+            }
         } catch (e) {
             console.error('Failed to open AIShell modal:', e)
             this.notifications.error(
@@ -218,6 +222,16 @@ export class ProfileTreeComponent extends BaseComponent {
                 this.translate.instant('Rebuild or reinstall the AIShell plugin and restart Tabby.'),
             )
         }
+    }
+
+    /** AISHELL: 打开批量修改密码弹窗（ids 为目标 profile 集合） */
+    openBatchPasswordModal (ids: Array<string|undefined>, scopeLabel: string): void {
+        this.openAIShellModal('batchPassword', instance => {
+            if (instance) {
+                instance.targetIds = ids.filter((x): x is string => !!x)
+                instance.scopeLabel = scopeLabel
+            }
+        })
     }
 
     // AISHELL: ===== 多选 =====
@@ -526,6 +540,15 @@ export class ProfileTreeComponent extends BaseComponent {
                     label: this.translate.instant('Delete selected'),
                     click: () => this.batchDelete(),
                 },
+                {
+                    // AISHELL: 批量修改登录密码（选中集）
+                    type: 'normal',
+                    label: this.translate.instant('Batch change passwords…'),
+                    click: () => this.openBatchPasswordModal(
+                        this.getSelectedProfiles().map(p => p.id),
+                        this.translate.instant('Selected: {n}', { n }),
+                    ),
+                },
                 { type: 'separator' },
             ])
             return
@@ -560,6 +583,13 @@ export class ProfileTreeComponent extends BaseComponent {
                 type: 'normal',
                 label: this.translate.instant('Delete profile'),
                 click: () => this.deleteProfile(profile),
+                enabled: !(profile.isBuiltin ?? profile.isTemplate),
+            },
+            {
+                // AISHELL: 修改登录密码（单台也走批量弹窗，两种密码都能改）
+                type: 'normal',
+                label: this.translate.instant('Batch change passwords…'),
+                click: () => this.openBatchPasswordModal([profile.id], profile.name ?? ''),
                 enabled: !(profile.isBuiltin ?? profile.isTemplate),
             },
         ])
@@ -644,6 +674,16 @@ export class ProfileTreeComponent extends BaseComponent {
                 label: this.translate.instant('Delete group'),
                 click: () => this.deleteGroup(group),
                 enabled: group.editable,
+            },
+            {
+                // AISHELL: 批量修改整个文件夹（含子文件夹）下所有服务器的登录密码
+                type: 'normal',
+                label: this.translate.instant('Batch change passwords…'),
+                click: () => this.openBatchPasswordModal(
+                    groupProfiles.map(p => p.id),
+                    this.profilesService.resolveProfileGroupPath(group.id ?? '').join(' / '),
+                ),
+                enabled: groupProfiles.length > 0,
             },
         ])
     }

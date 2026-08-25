@@ -3092,3 +3092,43 @@ msgstr "删除服务器"
 #: tabby-core/src/components/profileTree.component.ts
 msgid "Delete profile \"{name}\"?"
 msgstr "删除服务器“{name}”？"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Batch change passwords…"
+msgstr "批量修改密码…"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.pug
+msgid "Batch change passwords"
+msgstr "批量修改登录密码"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.pug
+msgid "Two kinds of passwords are used: the SSH login password (bastion/direct), and the jump password typed by the login script. Fill only what you want to change."
+msgstr "涉及两类密码：SSH 登录密码（堡垒机/直连）和登录脚本里输入的跳转目标机密码。只填需要修改的，留空的不动。"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.pug
+msgid "New SSH login password"
+msgstr "新的 SSH 登录密码"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.pug
+msgid "New jump target password"
+msgstr "新的跳转目标机密码"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.pug
+msgid "Applies to {n} profiles"
+msgstr "将作用于 {n} 台服务器"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.pug
+msgid "Scope"
+msgstr "范围"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.pug
+msgid "{n} profiles"
+msgstr "{n} 台服务器"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.ts
+msgid "Passwords updated"
+msgstr "密码已更新"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.ts
+msgid "{n} SSH passwords, {m} jump passwords"
+msgstr "SSH 登录密码 {n} 台、跳转密码 {m} 台"

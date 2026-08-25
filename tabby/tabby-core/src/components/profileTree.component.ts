@@ -416,7 +416,8 @@ export class ProfileTreeComponent extends BaseComponent {
         }
         if (data.kind === 'group') {
             if (target.kind === 'root') { return true }
-            if (target.kind === 'group-header' && targetEditable && data.group) {
+            // AISHELL: 分组头和分组内容区都可作为放置目标（内容区大、易命中）
+            if ((target.kind === 'group-header' || target.kind === 'profiles') && targetEditable && data.group) {
                 // 不能拖到自身或自己的子孙分组
                 return target.group!.id !== data.group.id &&
                     !this.isGroupDescendantOf(target.group!.id, data.group.id)
@@ -451,20 +452,48 @@ export class ProfileTreeComponent extends BaseComponent {
             await this.profilesService.bulkMoveProfiles(moving, targetGroupId)
             await this.config.save()
         } else if (item.kind === 'group' && item.group) {
+            let targetGroupId: string|null|undefined
+            if (target.kind === 'root') {
+                targetGroupId = undefined
+            } else if ((target.kind === 'group-header' || target.kind === 'profiles') && target.group) {
+                targetGroupId = target.group.id
+            } else {
+                return
+            }
+            if (item.group.parentGroupId === targetGroupId && target.kind !== 'root') { return }
+            if (!this.canDropItem({ data: item } as CdkDrag, { data: target } as CdkDropList)) { return }
+
+            // AISHELL: 文件夹移动二次确认 + 完成提示
+            const sourcePath = this.profilesService.resolveProfileGroupPath(item.group.id ?? '').join(' / ')
+            const targetPath = targetGroupId
+                ? this.profilesService.resolveProfileGroupPath(targetGroupId).join(' / ')
+                : this.translate.instant('Top level')
+            const profileCount = this.collectGroupProfilesRecursively(item.group).length
+            const childGroupCount = this.profilesService.collectDescendantGroupIds(item.group.id ?? '').length - 1
+            const confirmResult = await this.platform.showMessageBox({
+                type: 'warning',
+                message: this.translate.instant('Move folder "{name}"?', { name: item.group.name }),
+                detail: this.translate.instant('{source} → {target} ({n} profiles, {m} subfolders)', { source: sourcePath, target: targetPath, n: profileCount, m: childGroupCount }),
+                buttons: [
+                    this.translate.instant('Move'),
+                    this.translate.instant('Cancel'),
+                ],
+                defaultId: 1,
+                cancelId: 1,
+            })
+            if (confirmResult.response !== 0) { return }
+
             const groupCopy: any = deepClone(item.group)
             delete groupCopy.collapsed
             delete groupCopy.children
             delete groupCopy.profiles
-            if (target.kind === 'root') {
-                groupCopy.parentGroupId = undefined
-            } else if (target.kind === 'group-header' && target.group) {
-                if (!this.canDropItem({ data: item } as CdkDrag, { data: target } as CdkDropList)) { return }
-                groupCopy.parentGroupId = target.group.id
-            } else {
-                return
-            }
+            groupCopy.parentGroupId = targetGroupId
             await this.profilesService.writeProfileGroup(groupCopy)
             await this.config.save()
+            this.notifications.info(
+                this.translate.instant('Folder moved'),
+                `${sourcePath} → ${targetPath}`,
+            )
         }
     }
 
@@ -672,21 +701,37 @@ export class ProfileTreeComponent extends BaseComponent {
                 clone: true,
             })
 
+            // AISHELL: 搜索键除名称/描述外加入 host（堡垒机会话的名字是目标机 IP，host 是堡垒机 IP）
+            for (const p of profiles) {
+                (p as any).host = (p as any).options?.host ?? ''
+            }
             const matches = new FuzzySearch(
                 profiles.filter(p => !p.isTemplate),
-                ['name', 'description'],
+                ['name', 'description', 'host'],
                 { sort: false },
             ).search(q)
+            const matchedProfileIds = new Set(matches.map(p => p.id ?? ''))
 
-            this.rootGroups = [
-                {
-                    id: 'search',
-                    editable: false,
-                    name: this.translate.instant('Filter results'),
-                    icon: 'fas fa-magnifying-glass',
-                    profiles: matches,
-                },
-            ]
+            // AISHELL: 文件夹名命中 → 保留整个子树；否则只保留命中的服务器/子孙文件夹
+            const pruneGroup = (group: PartialProfileGroup<CollapsableProfileGroup>): PartialProfileGroup<CollapsableProfileGroup>|null => {
+                const nameHit = (group.name ?? '').toLowerCase().includes(q)
+                const children = ((group as any).children ?? [])
+                    .map((child: PartialProfileGroup<CollapsableProfileGroup>) => pruneGroup(child))
+                    .filter((child: PartialProfileGroup<CollapsableProfileGroup>|null): child is PartialProfileGroup<CollapsableProfileGroup> => !!child)
+                const groupProfiles = nameHit ? (group.profiles ?? []) : (group.profiles ?? []).filter(p => matchedProfileIds.has(p.id ?? ''))
+                if (!nameHit && children.length === 0 && groupProfiles.length === 0) { return null }
+                return {
+                    ...group,
+                    children,
+                    profiles: groupProfiles,
+                    collapsed: false, // 搜索结果全部展开
+                }
+            }
+
+            const fullTree = this.profilesService.buildGroupTree(this.profileGroups as any) as any
+            this.rootGroups = fullTree
+                .map((g: any) => pruneGroup(g))
+                .filter((g: PartialProfileGroup<CollapsableProfileGroup>|null): g is PartialProfileGroup<CollapsableProfileGroup> => !!g)
             this.rebuildVisibleProfileIds()
         } catch (error) {
             console.error('Error occurred during search:', error)

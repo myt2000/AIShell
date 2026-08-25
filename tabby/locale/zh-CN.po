@@ -3052,3 +3052,23 @@ msgstr "将删除 {n} 台服务器和 {m} 个子文件夹，此操作不可撤�
 #: tabby-core/src/components/profileTree.component.ts
 msgid "Paste failed"
 msgstr "粘贴失败"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Move"
+msgstr "移动"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Top level"
+msgstr "顶层"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Folder moved"
+msgstr "文件夹已移动"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "Move folder \"{name}\"?"
+msgstr "移动文件夹“{name}”？"
+
+#: tabby-core/src/components/profileTree.component.ts
+msgid "{source} → {target} ({n} profiles, {m} subfolders)"
+msgstr "“{source}” → “{target}”（含 {n} 台服务器、{m} 个子文件夹）"

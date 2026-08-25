@@ -50,6 +50,14 @@
         top: 5px;
         z-index: 4;
         background: #00000047;
+        transition: opacity .2s ease;
+    }
+
+    /* AISHELL: 工具栏展开时扳手淡出，避免与右端「固定」按钮互相遮挡。
+       只降透明度、不位移不禁点击命中——位移或 pointer-events:none 会触发
+       mouseleave → 1s 后隐藏 → 扳手回位再 mouseenter 的循环闪烁 */
+    &.toolbar-revealed > .toolbar-pin-button {
+        opacity: 0;
     }
 
     &.toolbar-pinned > .terminal-toolbar-spacer {

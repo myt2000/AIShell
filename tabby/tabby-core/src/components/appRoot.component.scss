@@ -83,8 +83,10 @@ $tab-border-radius: 4px;
 }
 
 /* AISHELL: 横向标签（上/下位置）独立成行：tabs 独占一行，工具栏按钮另起一行；
-   标签固定宽度，超出横向滚动（滚动条隐藏，用左右箭头按钮翻页） */
-.content.tabs-on-top > .tab-bar, .content.tabs-on-bottom > .tab-bar {
+   标签固定宽度，超出横向滚动（滚动条隐藏，用左右箭头按钮翻页）。
+   注意 .tabs-on-top 类在左/右标签模式下也会设置，需排除竖向布局 */
+.content.tabs-on-top:not(.tabs-on-left):not(.tabs-on-right) > .tab-bar,
+.content.tabs-on-bottom > .tab-bar {
     flex-wrap: wrap;
     height: auto;
     position: relative;
@@ -105,6 +107,19 @@ $tab-border-radius: 4px;
     ::ng-deep tab-header {
         flex: 0 0 200px !important;
         width: 200px !important;
+    }
+}
+
+/* AISHELL: Windows 细边框且无标题栏时，原生窗口控件（─ □ ✕）悬浮在窗口右上角，
+   会压住标签行末尾——标签行右侧预留同等宽度，右滚动箭头相应左移。
+   platform-win32 是宿主(app-root)上的类，须用 :host-context 跨样式封装匹配 */
+:host-context(.platform-win32) .content.tabs-on-top:not(.tabs-on-left):not(.tabs-on-right):not(.tabs-titlebar-enabled) > .tab-bar {
+    > .tabs {
+        padding-right: 138px;
+    }
+
+    .aishell-tab-scroll.right {
+        right: 138px;
     }
 }
 

@@ -100,6 +100,11 @@ export class EditProfileGroupModalComponent<G extends ProfileGroup> {
             map(term => iconsClassList.filter(v => v.toLowerCase().includes(term.toLowerCase())).slice(0, 10)),
         )
 
+    /** AISHELL: 清空自定义图标，恢复树中的默认文件夹图标 */
+    resetIcon (): void {
+        this.group.icon = undefined
+    }
+
     async save () {
         if (!this.selectedParentGroup) {
             this.group.parentGroupId = undefined

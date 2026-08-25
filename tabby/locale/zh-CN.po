@@ -3072,3 +3072,7 @@ msgstr "移动文件夹“{name}”？"
 #: tabby-core/src/components/profileTree.component.ts
 msgid "{source} → {target} ({n} profiles, {m} subfolders)"
 msgstr "“{source}” → “{target}”（含 {n} 台服务器、{m} 个子文件夹）"
+
+#: tabby-settings/src/components/editProfileGroupModal.component.pug
+msgid "Reset to default folder icon"
+msgstr "恢复默认文件夹图标"

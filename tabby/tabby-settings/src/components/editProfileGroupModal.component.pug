@@ -35,9 +35,15 @@
                         [ngbTypeahead]='iconSearch',
                         [resultTemplate]='rt'
                     )
+                    // AISHELL: 一键恢复默认文件夹图标（清空 icon 字段）
+                    button.btn.btn-secondary(
+                        type='button',
+                        [ngbTooltip]='"Reset to default folder icon"|translate',
+                        (click)='resetIcon()'
+                    ): i.far.fa-folder(aria-hidden='true')
                     .input-group-text
                         profile-icon(
-                            [icon]='group.icon',
+                            [icon]='group.icon || "far fa-folder"',
                             [color]='group.color'
                         )
 

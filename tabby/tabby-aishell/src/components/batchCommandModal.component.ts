@@ -1,29 +1,34 @@
 import { Component } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 
-import { BaseComponent, NotificationsService, TranslateService, PartialProfile, PartialProfileGroup, PlatformService, Profile, ProfileGroup, ProfilesService } from 'tabby-core'
+import { BaseComponent, NotificationsService, TranslateService, PlatformService } from 'tabby-core'
+import { ConnectableTerminalTabComponent } from 'tabby-terminal'
 
 import { BatchCommandService } from '../services/batchCommand.service'
 
-type TargetMode = 'selected' | 'openTabs' | 'group'
+interface OpenTabEntry {
+    tab: ConnectableTerminalTabComponent<any>
+    title: string
+    target: string
+    checked: boolean
+}
 
+/**
+ * AISHELL: 批量命令（简化版）——只发给已打开且连接就绪的终端窗口，
+ * 勾选哪些窗口就发哪些；不自动连接新服务器。
+ */
 /** @hidden */
 @Component({
     templateUrl: './batchCommandModal.component.pug',
     styleUrls: ['./batchCommandModal.component.scss'],
 })
 export class BatchCommandModalComponent extends BaseComponent {
-    targetMode: TargetMode = 'selected'
-    profiles: PartialProfile<Profile>[] = []
-    selectedProfileIds = new Set<string>()
-    groups: PartialProfileGroup<ProfileGroup>[] = []
-    selectedGroupId = ''
+    openTabs: OpenTabEntry[] = []
     commandText = ''
     running = false
 
     constructor (
         public modalInstance: NgbActiveModal,
-        private profilesService: ProfilesService,
         private batch: BatchCommandService,
         private platform: PlatformService,
         private notifications: NotificationsService,
@@ -32,51 +37,41 @@ export class BatchCommandModalComponent extends BaseComponent {
         super()
     }
 
-    async ngOnInit (): Promise<void> {
-        this.profiles = (await this.profilesService.getProfiles({ includeBuiltin: false, clone: true }))
-            .filter(p => !p.isTemplate && p.id)
-        this.groups = this.profilesService.getSyncProfileGroups().filter(g => g.editable)
+    ngOnInit (): void {
+        this.refreshTabs()
+    }
+
+    refreshTabs (): void {
+        const prev = new Map(this.openTabs.map(e => [e.tab, e.checked]))
+        this.openTabs = this.batch.getOpenConnectedTabs().map(tab => {
+            const profile: any = (tab as any).profile
+            const target = profile?.options?.host
+                ? `${profile.options.user ? profile.options.user + '@' : ''}${profile.options.host}`
+                : ''
+            return {
+                tab,
+                title: tab.title || target || 'terminal',
+                target,
+                checked: prev.get(tab) ?? true,
+            }
+        })
     }
 
     get commands (): string[] {
         return this.commandText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0)
     }
 
-    get selectedProfiles (): PartialProfile<Profile>[] {
-        return this.profiles.filter(p => this.selectedProfileIds.has(p.id ?? ''))
+    get checkedTabs (): ConnectableTerminalTabComponent<any>[] {
+        return this.openTabs.filter(e => e.checked).map(e => e.tab)
     }
 
-    toggleProfile (id?: string): void {
-        if (!id) { return }
-        if (this.selectedProfileIds.has(id)) {
-            this.selectedProfileIds.delete(id)
-        } else {
-            this.selectedProfileIds.add(id)
-        }
-    }
-
-    selectGroupProfiles (): void {
-        if (!this.selectedGroupId) { return }
-        for (const p of this.profiles) {
-            if ((p.group ?? '') === this.selectedGroupId) {
-                this.selectedProfileIds.add(p.id ?? '')
-            }
-        }
-        this.targetMode = 'selected'
-    }
-
-    private async resolveTargets (): Promise<{ mode: TargetMode, profiles: PartialProfile<Profile>[] }> {
-        if (this.targetMode === 'group' && this.selectedGroupId) {
-            return { mode: 'selected', profiles: this.profiles.filter(p => (p.group ?? '') === this.selectedGroupId) }
-        }
-        return { mode: this.targetMode, profiles: this.selectedProfiles }
+    get canRun (): boolean {
+        return this.commands.length > 0 && this.checkedTabs.length > 0 && !this.running
     }
 
     async run (): Promise<void> {
         const commands = this.commands
-        if (!commands.length || this.running) { return }
-        const { mode, profiles } = await this.resolveTargets()
-        if (mode === 'selected' && !profiles.length) { return }
+        if (!this.canRun) { return }
 
         if (this.batch.isDangerous(commands)) {
             const result = await this.platform.showMessageBox({
@@ -95,11 +90,7 @@ export class BatchCommandModalComponent extends BaseComponent {
 
         this.running = true
         try {
-            if (mode === 'openTabs') {
-                await this.batch.runAgainstOpenTabs(commands)
-            } else {
-                await this.batch.runAgainstProfiles(profiles, commands)
-            }
+            await this.batch.runAgainstOpenTabs(commands, this.checkedTabs)
             this.modalInstance.close()
         } catch (e: any) {
             this.notifications.error(e?.toString() ?? String(e))

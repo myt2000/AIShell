@@ -3132,3 +3132,15 @@ msgstr "密码已更新"
 #: tabby-aishell/src/components/batchPasswordModal.component.ts
 msgid "{n} SSH passwords, {m} jump passwords"
 msgstr "SSH 登录密码 {n} 台、跳转密码 {m} 台"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "Open terminal tabs"
+msgstr "已打开的终端窗口"
+
+#: tabby-aishell/src/components/batchCommandModal.component.pug
+msgid "No open terminal tabs. Connect to servers first."
+msgstr "没有已打开的终端窗口，请先连接服务器。"
+
+#: tabby-aishell/src/services/batchCommand.service.ts
+msgid "No open terminal tabs"
+msgstr "没有已打开的终端窗口"

@@ -4,36 +4,18 @@
         button.btn.btn-link.close(type='button', (click)='cancel()') ×
     .modal-body
         .mb-3
-            label.form-label {{ 'Targets'|translate }}
-            .form-check
-                input.form-check-input(type='radio', id='target-selected', name='targetMode', [(ngModel)]='targetMode', value='selected')
-                label.form-check-label(for='target-selected') {{ 'Selected servers'|translate }} ({{ selectedProfileIds.size }})
-            .form-check
-                input.form-check-input(type='radio', id='target-open', name='targetMode', [(ngModel)]='targetMode', value='openTabs')
-                label.form-check-label(for='target-open') {{ 'All open terminal tabs'|translate }}
-            .form-check
-                input.form-check-input(type='radio', id='target-group', name='targetMode', [(ngModel)]='targetMode', value='group')
-                label.form-check-label(for='target-group') {{ 'All servers in group'|translate }}
-
-        .mb-3(*ngIf='targetMode === "selected"')
             .d-flex.align-items-center.mb-1
-                select.form-control.form-control-sm.me-2([(ngModel)]='selectedGroupId')
-                    option(value='') {{ 'Pick group to select…'|translate }}
-                    option(*ngFor='let g of groups', [value]='g.id') {{ g.name }}
-                button.btn.btn-sm.btn-secondary(type='button', [disabled]='!selectedGroupId', (click)='selectGroupProfiles()') {{ 'Select'|translate }}
-            .profile-checklist
-                .form-check(*ngFor='let p of profiles')
-                    input.form-check-input(
-                        type='checkbox',
-                        [id]='"chk-" + p.id',
-                        [checked]='selectedProfileIds.has(p.id ?? "")',
-                        (change)='toggleProfile(p.id)'
-                    )
-                    label.form-check-label([for]='"chk-" + p.id') {{ p.name }}
-
-        .mb-3(*ngIf='targetMode === "group"')
-            select.form-control([(ngModel)]='selectedGroupId')
-                option(*ngFor='let g of groups', [value]='g.id') {{ g.name }}
+                label.form-label.mb-0.me-auto {{ 'Open terminal tabs'|translate }} ({{ checkedTabs.length }}/{{ openTabs.length }})
+                button.btn.btn-sm.btn-secondary(type='button', (click)='refreshTabs()')
+                    i.fas.fa-rotate.me-1(aria-hidden='true')
+                    | {{ 'Refresh tab list'|translate }}
+            .tab-checklist(*ngIf='openTabs.length')
+                label.tab-entry(*ngFor='let e of openTabs')
+                    input(type='checkbox', [(ngModel)]='e.checked')
+                    .tab-entry-info
+                        .tab-entry-name(title='{{e.title}}') {{ e.title }}
+                        .tab-entry-target.text-muted(*ngIf='e.target') {{ e.target }}
+            .alert.alert-warning.py-2(*ngIf='!openTabs.length') {{ 'No open terminal tabs. Connect to servers first.'|translate }}
 
         .mb-3
             label.form-label {{ 'Commands, one per line'|translate }}
@@ -46,7 +28,7 @@
     .modal-footer
         button.btn.btn-primary(
             type='button',
-            [disabled]='!commands.length || running || (targetMode === "selected" && !selectedProfileIds.size) || (targetMode === "group" && !selectedGroupId)',
+            [disabled]='!canRun',
             (click)='run()'
         )
             span(*ngIf='!running') {{ 'Send'|translate }}

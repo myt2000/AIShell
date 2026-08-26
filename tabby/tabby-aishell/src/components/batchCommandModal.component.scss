@@ -1,12 +1,44 @@
 .modal-content {
     min-width: 520px;
 
-    .profile-checklist {
+    .tab-checklist {
         max-height: 240px;
         overflow-y: auto;
         border: 1px solid var(--theme-secondary);
         border-radius: .3rem;
         padding: .5rem;
+    }
+
+    .tab-entry {
+        display: flex;
+        align-items: flex-start;
+        gap: .4rem;
+        padding: .2rem .3rem;
+        border-radius: .3rem;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--theme-secondary);
+        }
+
+        .tab-entry-info {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .tab-entry-name {
+            font-size: .8rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tab-entry-target {
+            font-size: .7rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     }
 
     .command-input {

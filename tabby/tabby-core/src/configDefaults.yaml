@@ -26,6 +26,8 @@ terminal:
   paneResizeStep: 0.1
   focusFollowsMouse: false
   identification: null
+  # AISHELL: 服务器管理工具不自动打开本地终端（上游默认 true，配合关闭欢迎页时启动即开 CMD）
+  autoOpen: false
 hotkeys:
   profile:
     __nonStructural: true

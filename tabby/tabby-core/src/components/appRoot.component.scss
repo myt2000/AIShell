@@ -113,6 +113,9 @@ $tab-border-radius: 4px;
     ::ng-deep tab-header {
         flex: 0 0 200px !important;
         width: 200px !important;
+        /* AISHELL: 与滚动箭头同高（tab-header 默认横向模式高度随内容，箭头是 tabs-height） */
+        height: var(--tabs-height);
+        align-items: center;
     }
 }
 

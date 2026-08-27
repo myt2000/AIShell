@@ -15,6 +15,14 @@ profile-icon(
 .pin-indicator(*ngIf='tab.pinned')
     i.fas.fa-thumbtack
 
+// AISHELL: SecureCRT 式连接状态点：绿=已连接且已查看；蓝=有未查看的新输出；红=连接断开/失败
+.tab-status-dot(
+    *ngIf='statusDot',
+    [class.green]='statusDot === "green"',
+    [class.blue]='statusDot === "blue"',
+    [class.red]='statusDot === "red"'
+)
+
 .name(
     [class.no-hover]='config.store.terminal.hideCloseButton && config.store.terminal.hideTabOptionsButton'
     cdkDrag,

@@ -57,6 +57,28 @@ $tabs-height: 38px;
         opacity: 0.8;
     }
 
+    /* AISHELL: SecureCRT 式连接状态点 */
+    .tab-status-dot {
+        flex: none;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+        align-self: center;
+
+        &.green {
+            background: #2ecc71;
+        }
+
+        &.blue {
+            background: #3498db;
+        }
+
+        &.red {
+            background: #e74c3c;
+        }
+    }
+
     .name {
         flex: auto;
         margin-top: 1px;

@@ -174,9 +174,12 @@ export class AppRootComponent {
             this.activeTransfersDropdown.open()
         })
 
-        // AISHELL: 标签行溢出滚动箭头状态
+        // AISHELL: 标签行溢出滚动箭头状态 + 切换标签时活动标签滚进可视区
         this.app.tabsChanged$.subscribe(() => setTimeout(() => this.updateTabScrollArrows()))
-        this.app.activeTabChange$.subscribe(() => setTimeout(() => this.updateTabScrollArrows()))
+        this.app.activeTabChange$.subscribe(() => setTimeout(() => {
+            this.updateTabScrollArrows()
+            this.scrollActiveTabIntoView()
+        }))
 
         config.ready$.toPromise().then(async () => {
             this.leftToolbarButtons = await this.getToolbarButtons(false)
@@ -249,6 +252,21 @@ export class AppRootComponent {
         if (!el) { return }
         el.scrollLeft += direction * Math.max(160, el.clientWidth * 0.8)
         this.updateTabScrollArrows()
+    }
+
+    /** AISHELL: 活动（Ctrl+Tab 等切换的）标签不在可视区时滚动过去 */
+    private scrollActiveTabIntoView (): void {
+        const container = this.tabsContainer?.nativeElement
+        if (!container) { return }
+        const active = container.querySelector('tab-header.active') as HTMLElement|null
+        if (!active) { return }
+        const left = active.offsetLeft
+        const right = left + active.offsetWidth
+        if (left < container.scrollLeft) {
+            container.scrollLeft = Math.max(0, left - 8)
+        } else if (right > container.scrollLeft + container.clientWidth) {
+            container.scrollLeft = right - container.clientWidth + 8
+        }
     }
 
     @HostListener('window:resize')

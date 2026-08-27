@@ -71,7 +71,8 @@ for (const p of profiles) {
     if (!o.host || !o.user) { continue }
 
     const scripts = [
-        { expect: '$', send: `ssh log@${p.name}` },
+        // flexible: 堡垒机"克隆上次会话"流程会跳过输目标机这步，后续密码步骤先触发时自动作废
+        { expect: '$', send: `ssh log@${p.name}`, flexible: true },
         { expect: ':', send: 'log*gexin' },
     ]
     const groupName = groupById.get(p.group)?.name ?? ''

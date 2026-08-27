@@ -7,6 +7,9 @@ export interface LoginScript {
     send: string
     isRegex?: boolean
     optional?: boolean
+    /** AISHELL: 弹性步骤——等待自己的 expect，但若后续步骤先触发则自动跳过
+     * （用于堡垒机"克隆上次会话"等跳步流程：输目标机的步骤可能不出现） */
+    flexible?: boolean
 }
 
 export interface LoginScriptsOptions {
@@ -48,7 +51,11 @@ export class LoginScriptProcessor extends SessionMiddleware {
     feedFromSession (data: Buffer): void {
         const dataString = data.toString()
 
-        for (const script of this.remainingScripts) {
+        // AISHELL: flexible 步骤暂存——本 chunk 内若后续步骤触发则将其丢弃
+        // （时机已过），否则保留等待后续输出；遇到非 flexible 且未命中的
+        // 阻塞步骤则照常中断等待。
+        let pendingFlexible: LoginScript[] = []
+        for (const script of [...this.remainingScripts]) {
             if (!script.expect) {
                 continue
             }
@@ -64,13 +71,18 @@ export class LoginScriptProcessor extends SessionMiddleware {
                 this.logger.info('Executing script:', script)
                 this.outputToSession.next(Buffer.from(this.substituteVariables(script.send) + '\n'))
                 this.remainingScripts = this.remainingScripts.filter(x => x !== script)
-            } else {
-                if (script.optional) {
-                    this.logger.debug('Skip optional script: ' + script.expect)
-                    this.remainingScripts = this.remainingScripts.filter(x => x !== script)
-                } else {
-                    break
+                for (const skipped of pendingFlexible) {
+                    this.logger.debug('Skipping flexible script (superseded): ' + skipped.expect)
+                    this.remainingScripts = this.remainingScripts.filter(x => x !== skipped)
                 }
+                pendingFlexible = []
+            } else if (script.optional) {
+                this.logger.debug('Skip optional script: ' + script.expect)
+                this.remainingScripts = this.remainingScripts.filter(x => x !== script)
+            } else if (script.flexible) {
+                pendingFlexible.push(script)
+            } else {
+                break
             }
         }
 

@@ -43,11 +43,18 @@ export class BatchCommandService {
         return commands.some(cmd => BatchCommandService.DANGEROUS_PATTERNS.some(re => re.test(cmd)))
     }
 
-    /** 当前所有已连接的终端标签 */
+    /** 当前所有已连接的终端标签（app.tabs 里的是 SplitTabComponent 容器，需用 getAllTabs 展开） */
     getOpenConnectedTabs (): ConnectableTerminalTabComponent<any>[] {
-        return this.app.tabs.filter(
-            t => t instanceof ConnectableTerminalTabComponent && (t as any).session?.open,
-        ) as unknown as ConnectableTerminalTabComponent<any>[]
+        const result: ConnectableTerminalTabComponent<any>[] = []
+        for (const tab of this.app.tabs) {
+            const inner: any[] = (tab as any).getAllTabs ? (tab as any).getAllTabs() : [tab]
+            for (const t of inner) {
+                if (t instanceof ConnectableTerminalTabComponent && t.session?.open) {
+                    result.push(t)
+                }
+            }
+        }
+        return result
     }
 
     /** 向一组已打开的终端标签广播命令 */

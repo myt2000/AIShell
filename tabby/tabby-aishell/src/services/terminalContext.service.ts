@@ -11,12 +11,18 @@ export class TerminalContextService {
     constructor (private app: AppService) { }
 
     get activeTerminalTab (): BaseTerminalTabComponent<any>|null {
-        const tab = this.app.activeTab
+        const tab: any = this.app.activeTab
         if (tab instanceof BaseTerminalTabComponent) {
             return tab
         }
-        // 可能在分屏容器内
-        return this.app.tabs.find(t => t instanceof BaseTerminalTabComponent) as BaseTerminalTabComponent<any>|null
+        // AISHELL: 活动标签通常是 SplitTabComponent 容器，取其聚焦的子终端
+        if (tab?.getFocusedTab) {
+            const focused = tab.getFocusedTab()
+            if (focused instanceof BaseTerminalTabComponent) {
+                return focused
+            }
+        }
+        return this.getOpenTerminalTabs()[0] ?? null
     }
 
     /** 选中的文本（未选中返回空串） */
@@ -59,8 +65,17 @@ export class TerminalContextService {
         return parts.join(' ')
     }
 
-    /** AISHELL: 当前打开的全部终端标签（多窗口日志分析的目标清单） */
+    /** AISHELL: 当前打开的全部终端标签（app.tabs 里的是 SplitTabComponent 容器，需展开） */
     getOpenTerminalTabs (): BaseTerminalTabComponent<any>[] {
-        return this.app.tabs.filter(t => t instanceof BaseTerminalTabComponent) as BaseTerminalTabComponent<any>[]
+        const result: BaseTerminalTabComponent<any>[] = []
+        for (const tab of this.app.tabs) {
+            const inner: any[] = (tab as any).getAllTabs ? (tab as any).getAllTabs() : [tab]
+            for (const t of inner) {
+                if (t instanceof BaseTerminalTabComponent) {
+                    result.push(t)
+                }
+            }
+        }
+        return result
     }
 }

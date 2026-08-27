@@ -3144,3 +3144,19 @@ msgstr "没有已打开的终端窗口，请先连接服务器。"
 #: tabby-aishell/src/services/batchCommand.service.ts
 msgid "No open terminal tabs"
 msgstr "没有已打开的终端窗口"
+
+#: tabby-aishell/src/contextMenu.ts
+msgid "Send input to all tabs"
+msgstr "同步输入到所有标签页"
+
+#: tabby-aishell/src/services/keyboardBroadcast.service.ts
+msgid "Keyboard broadcast enabled"
+msgstr "键盘同步已开启"
+
+#: tabby-aishell/src/services/keyboardBroadcast.service.ts
+msgid "Everything you type is sent to all connected terminal tabs."
+msgstr "你输入的内容将同步发送到所有已连接的终端标签页。"
+
+#: tabby-aishell/src/services/keyboardBroadcast.service.ts
+msgid "Keyboard broadcast disabled"
+msgstr "键盘同步已关闭"

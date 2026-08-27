@@ -89,14 +89,11 @@ export class BatchCommandModalComponent extends BaseComponent {
         }
 
         this.running = true
-        try {
-            await this.batch.runAgainstOpenTabs(commands, this.checkedTabs)
-            this.modalInstance.close()
-        } catch (e: any) {
+        // AISHELL: 发出即关——命令队列后台发送（每窗口内仍按行序+间隔），不阻塞操作
+        void this.batch.runAgainstOpenTabs(commands, this.checkedTabs).catch(e => {
             this.notifications.error(e?.toString() ?? String(e))
-        } finally {
-            this.running = false
-        }
+        })
+        this.modalInstance.close()
     }
 
     cancel (): void {

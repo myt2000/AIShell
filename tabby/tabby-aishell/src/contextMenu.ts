@@ -7,6 +7,7 @@ import { AiAssistantModalComponent } from './components/aiAssistantModal.compone
 import { LogAnalysisModalComponent } from './components/logAnalysisModal.component'
 import { TerminalContextService } from './services/terminalContext.service'
 import { SessionLogService } from './services/sessionLog.service'
+import { KeyboardBroadcastService } from './services/keyboardBroadcast.service'
 
 /** @hidden */
 @Injectable()
@@ -17,6 +18,7 @@ export class AiContextMenuProvider extends TabContextMenuItemProvider {
         private ngbModal: NgbModal,
         private terminalContext: TerminalContextService,
         private sessionLog: SessionLogService,
+        private keyboardBroadcast: KeyboardBroadcastService,
         private translate: TranslateService,
     ) {
         super()
@@ -41,6 +43,14 @@ export class AiContextMenuProvider extends TabContextMenuItemProvider {
         const recordingPath = this.sessionLog.getFilePath(tab)
 
         return [
+            {
+                // AISHELL: 键盘输入同步到所有已连接标签页（SecureCRT 式交互广播）
+                label: this.translate.instant('Send input to all tabs'),
+                type: 'checkbox',
+                checked: this.keyboardBroadcast.enabled,
+                click: () => this.keyboardBroadcast.toggle(),
+            },
+            { type: 'separator' },
             {
                 label: this.translate.instant('AI'),
                 submenu: [

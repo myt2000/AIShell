@@ -75,7 +75,8 @@ export class LoginScriptProcessor extends SessionMiddleware {
                     this.logger.debug('Skipping flexible script (superseded): ' + skipped.expect)
                     this.remainingScripts = this.remainingScripts.filter(x => x !== skipped)
                 }
-                pendingFlexible = []
+                // AISHELL: 每个数据块最多触发一步，避免同一块里多步连环误发
+                break
             } else if (script.optional) {
                 this.logger.debug('Skip optional script: ' + script.expect)
                 this.remainingScripts = this.remainingScripts.filter(x => x !== script)

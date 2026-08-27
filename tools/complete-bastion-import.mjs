@@ -73,7 +73,7 @@ for (const p of profiles) {
     const scripts = [
         // flexible: 堡垒机"克隆上次会话"流程会跳过输目标机这步，后续密码步骤先触发时自动作废
         { expect: '$', send: `ssh log@${p.name}`, flexible: true },
-        { expect: ':', send: 'log*gexin' },
+        { expect: 'assword[:：]', isRegex: true, send: 'log*gexin' },
     ]
     const groupName = groupById.get(p.group)?.name ?? ''
     // 嵌套化后 group.name 就是模块名；根组（站点）名不含模块 → 不加 cd

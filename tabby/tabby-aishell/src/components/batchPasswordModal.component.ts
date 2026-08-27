@@ -3,6 +3,8 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 
 import { BaseComponent, ConfigService, NotificationsService, TranslateService } from 'tabby-core'
 
+import { SecurePasswordService } from '../services/securePassword.service'
+
 /**
  * AISHELL: 批量修改登录密码。
  * 目标是一批服务器 profile，两类密码可分别更新（留空的不动）：
@@ -27,6 +29,7 @@ export class BatchPasswordModalComponent extends BaseComponent {
     constructor (
         public modalInstance: NgbActiveModal,
         private config: ConfigService,
+        private securePasswords: SecurePasswordService,
         private notifications: NotificationsService,
         private translate: TranslateService,
     ) {
@@ -65,16 +68,37 @@ export class BatchPasswordModalComponent extends BaseComponent {
         if (!this.canApply) { return }
         let updatedSsh = 0
         let updatedJump = 0
-        for (const profile of this.matchingProfiles()) {
-            profile.options = profile.options ?? {}
-            if (this.sshPassword && profile.type === 'ssh') {
-                profile.options.password = this.sshPassword
+        const profiles = this.matchingProfiles()
+
+        // AISHELL: 密码写入系统凭据管理器（SecureCRT 式），配置文件不落明文
+        if (this.sshPassword) {
+            const seen = new Set<string>()
+            for (const profile of profiles) {
+                const options = profile.options ?? {}
+                if (profile.type !== 'ssh' || !options.host || !options.user) { continue }
+                const dedupeKey = `${options.user}@${options.host}:${options.port ?? 22}`
+                if (seen.has(dedupeKey)) { continue }
+                seen.add(dedupeKey)
+                await this.securePasswords.setSshPassword(options.host, options.port, options.user, this.sshPassword)
                 updatedSsh++
+            }
+        }
+
+        if (this.jumpPassword) {
+            await this.securePasswords.setTargetPassword(this.jumpPassword)
+        }
+
+        // 配置侧：清掉明文连接密码；脚本密码步骤统一改为 $TARGET_PASSWORD 变量引用
+        for (const profile of profiles) {
+            profile.options = profile.options ?? {}
+            if (this.sshPassword && profile.type === 'ssh' && profile.options.password !== undefined) {
+                delete profile.options.password
             }
             if (this.jumpPassword) {
                 const idx = BatchPasswordModalComponent.passwordScriptIndex(profile)
                 if (idx >= 0) {
-                    profile.options.scripts[idx].send = this.jumpPassword
+                    profile.options.scripts[idx].send = '$TARGET_PASSWORD'
+                    profile.options.scripts[idx].secret = true
                     updatedJump++
                 }
             }
@@ -82,7 +106,7 @@ export class BatchPasswordModalComponent extends BaseComponent {
         await this.config.save()
         this.notifications.info(
             this.translate.instant('Passwords updated'),
-            this.translate.instant('{n} SSH passwords, {m} jump passwords', { n: updatedSsh, m: updatedJump }),
+            this.translate.instant('{n} SSH passwords, {m} jump passwords', { n: updatedSsh, m: updatedJump }) + ' → ' + this.translate.instant('stored in system credential manager'),
         )
         this.modalInstance.close()
     }

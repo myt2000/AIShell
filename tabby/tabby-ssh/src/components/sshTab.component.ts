@@ -1,4 +1,5 @@
 import * as russh from 'russh'
+import * as keytar from 'keytar'
 import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker'
 import colors from 'ansi-colors'
 import { Component, Injector, HostListener } from '@angular/core'
@@ -28,6 +29,9 @@ export class SSHTabComponent extends ConnectableTerminalTabComponent<SSHProfile>
 
     /** AISHELL: 最近一次连接初始化失败（标签页红点状态） */
     sessionInitFailed = false
+
+    /** AISHELL: 连接用工作副本——密码从系统凭据管理器注入，不回写配置文件 */
+    private workingProfile: SSHProfile|null = null
     session: SSHShellSession|null = null
     sftpPanelVisible = false
     sftpPath = '/'
@@ -162,8 +166,9 @@ export class SSHTabComponent extends ConnectableTerminalTabComponent<SSHProfile>
     }
 
     private async initializeSessionMaybeMultiplex (multiplex = true): Promise<void> {
-        this.sshSession = await this.setupOneSession(this.injector, this.profile, multiplex)
-        const session = new SSHShellSession(this.injector, this.sshSession, this.profile)
+        const profile = this.workingProfile ?? this.profile
+        this.sshSession = await this.setupOneSession(this.injector, profile, multiplex)
+        const session = new SSHShellSession(this.injector, this.sshSession, profile)
 
         this.setSession(session)
         this.attachSessionHandler(session.serviceMessage$, msg => {
@@ -177,9 +182,34 @@ export class SSHTabComponent extends ConnectableTerminalTabComponent<SSHProfile>
         this.session?.resize(this.size.columns, this.size.rows)
     }
 
+    /** AISHELL: 深拷贝已解析配置，注入凭据管理器中的密码与 $TARGET_PASSWORD 变量；
+    配置文件本身不再保存明文密码，此副本仅存活于本次连接 */
+    private async buildWorkingProfile (): Promise<void> {
+        const resolved: any = this.profilesService.getConfigProxyForProfile(this.profile)
+        const options = JSON.parse(JSON.stringify(resolved.options ?? {}))
+        try {
+            const stored = await keytar.getPassword(`AIShell:ssh@${options.host}:${options.port ?? 22}`, options.user ?? '')
+            if (stored) {
+                options.password = stored
+            }
+        } catch (e) {
+            console.warn('AIShell: failed to load SSH password from credential manager', e)
+        }
+        try {
+            const target = await keytar.getPassword('AIShell:target-jump', 'jump')
+            if (target) {
+                options['aishell:vars'] = { ...(options['aishell:vars'] ?? {}), TARGET_PASSWORD: target }
+            }
+        } catch {
+            // 无跳转密码时忽略
+        }
+        this.workingProfile = { ...this.profile, options } as SSHProfile
+    }
+
     async initializeSession (): Promise<void> {
         await super.initializeSession()
         this.sessionInitFailed = false
+        await this.buildWorkingProfile()
         try {
             await this.initializeSessionMaybeMultiplex(true)
         } catch {

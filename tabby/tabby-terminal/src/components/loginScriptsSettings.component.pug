@@ -6,17 +6,21 @@ div
             placeholder='Expect',
             [(ngModel)]='script.expect'
         )
-        // AISHELL: 密码行默认掩码，眼睛按钮临时明文（SecureCRT 式"是否隐藏"）
+        // AISHELL: 密码行只写不读——已存密码永不回显（SecureCRT 式），保存时写入系统凭据管理器
         input.form-control(
-            [type]='isSecret(script) && !revealed.has(script) ? "password" : "text"',
+            *ngIf='!isSecret(script)',
+            type='text',
             placeholder='Send',
-            [(ngModel)]='script.send',
+            [(ngModel)]='script.send'
+        )
+        input.form-control(
+            *ngIf='isSecret(script)',
+            type='password',
+            [placeholder]='passwordPlaceholder(script)',
+            [ngModel]='newPasswords.get(script) ?? ""',
+            (ngModelChange)='newPasswords.set(script, $event)',
             autocomplete='off'
         )
-        .input-group-text.p-0.border-0(*ngIf='isSecret(script)')
-            button.btn.btn-link.btn-sm(type='button', (click)='toggleReveal(script)')
-                i.fas.fa-eye(*ngIf='!revealed.has(script)')
-                i.fas.fa-eye-slash(*ngIf='revealed.has(script)')
         .input-group-text.p-0.border-0
             .hover-reveal(ngbDropdown)
                 button.btn.btn-link.btn-sm(ngbDropdownToggle)

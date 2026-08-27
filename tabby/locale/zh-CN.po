@@ -3160,3 +3160,27 @@ msgstr "你输入的内容将同步发送到所有已连接的终端标签页。
 #: tabby-aishell/src/services/keyboardBroadcast.service.ts
 msgid "Keyboard broadcast disabled"
 msgstr "键盘同步已关闭"
+
+#: tabby-terminal/src/components/loginScriptsSettings.component.pug
+msgid "Hide password"
+msgstr "隐藏密码"
+
+#: tabby-aishell/src/services/securePassword.service.ts
+msgid "Passwords secured"
+msgstr "密码已安全存储"
+
+#: tabby-aishell/src/services/securePassword.service.ts
+msgid "{n} SSH passwords and {m} script passwords moved to system credential storage. Config file no longer contains plaintext passwords."
+msgstr "已将 {n} 个 SSH 密码、{m} 个脚本密码移入系统凭据管理器，配置文件不再包含明文密码。"
+
+#: tabby-aishell/src/components/batchPasswordModal.component.ts
+msgid "stored in system credential manager"
+msgstr "已存入系统凭据管理器"
+
+#: tabby-terminal/src/components/loginScriptsSettings.component.ts
+msgid "Stored securely — type to replace"
+msgstr "已加密存储（输入以更换）"
+
+#: tabby-terminal/src/components/loginScriptsSettings.component.ts
+msgid "Password"
+msgstr "密码"

@@ -10,6 +10,8 @@ export interface LoginScript {
     /** AISHELL: 弹性步骤——等待自己的 expect，但若后续步骤先触发则自动跳过
      * （用于堡垒机"克隆上次会话"等跳步流程：输目标机的步骤可能不出现） */
     flexible?: boolean
+    /** AISHELL: 密码行——编辑器中掩码显示（SecureCRT 式"是否隐藏"）；仅 UI 用，执行逻辑不感知 */
+    secret?: boolean
 }
 
 export interface LoginScriptsOptions {

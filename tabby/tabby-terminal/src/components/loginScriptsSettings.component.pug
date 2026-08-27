@@ -6,11 +6,17 @@ div
             placeholder='Expect',
             [(ngModel)]='script.expect'
         )
+        // AISHELL: 密码行默认掩码，眼睛按钮临时明文（SecureCRT 式"是否隐藏"）
         input.form-control(
-            type='text',
+            [type]='isSecret(script) && !revealed.has(script) ? "password" : "text"',
             placeholder='Send',
-            [(ngModel)]='script.send'
+            [(ngModel)]='script.send',
+            autocomplete='off'
         )
+        .input-group-text.p-0.border-0(*ngIf='isSecret(script)')
+            button.btn.btn-link.btn-sm(type='button', (click)='toggleReveal(script)')
+                i.fas.fa-eye(*ngIf='!revealed.has(script)')
+                i.fas.fa-eye-slash(*ngIf='revealed.has(script)')
         .input-group-text.p-0.border-0
             .hover-reveal(ngbDropdown)
                 button.btn.btn-link.btn-sm(ngbDropdownToggle)
@@ -37,6 +43,14 @@ div
                     )
                         i.fas.fa-fw([class.fa-check]='script.optional')
                         span(translate) Optional
+                    // AISHELL: 密码行隐藏开关
+                    a.dropdown-item(
+                        href='#',
+                        (click)='toggleSecret(script)',
+                        [class.active]='isSecret(script)',
+                    )
+                        i.fas.fa-fw([class.fa-check]='isSecret(script)')
+                        span(translate) Hide password
             button.btn.btn-link.btn-sm.hover-reveal((click)='deleteScript(script)')
                 i.fas.fa-fw.fa-trash-alt
 

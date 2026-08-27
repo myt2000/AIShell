@@ -12,6 +12,7 @@ import { LoginScript, LoginScriptsOptions } from '../middleware/loginScriptProce
 export class LoginScriptsSettingsComponent {
     @Input() options: LoginScriptsOptions
     scripts: LoginScript[]
+    revealed = new Set<LoginScript>()
 
     constructor (
         private platform: PlatformService,
@@ -20,6 +21,26 @@ export class LoginScriptsSettingsComponent {
 
     ngOnInit () {
         this.scripts = this.options.scripts
+    }
+
+    /** AISHELL: 密码行——显式标记，或 expect 匹配 password/密码 自动识别 */
+    isSecret (script: LoginScript): boolean {
+        if (script.secret !== undefined) { return script.secret }
+        return /assword|密码/i.test(script.expect ?? '')
+    }
+
+    /** 手动切换隐藏：把当前生效状态取反固化为显式标记 */
+    toggleSecret (script: LoginScript): void {
+        script.secret = !this.isSecret(script)
+        if (!script.secret) { this.revealed.delete(script) }
+    }
+
+    toggleReveal (script: LoginScript): void {
+        if (this.revealed.has(script)) {
+            this.revealed.delete(script)
+        } else {
+            this.revealed.add(script)
+        }
     }
 
     async deleteScript (script: LoginScript) {

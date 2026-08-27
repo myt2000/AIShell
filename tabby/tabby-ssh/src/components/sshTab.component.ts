@@ -25,6 +25,9 @@ import { SSHMultiplexerService } from '../services/sshMultiplexer.service'
 export class SSHTabComponent extends ConnectableTerminalTabComponent<SSHProfile> {
     Platform = Platform
     sshSession: SSHSession|null = null
+
+    /** AISHELL: 最近一次连接初始化失败（标签页红点状态） */
+    sessionInitFailed = false
     session: SSHShellSession|null = null
     sftpPanelVisible = false
     sftpPath = '/'
@@ -176,6 +179,7 @@ export class SSHTabComponent extends ConnectableTerminalTabComponent<SSHProfile>
 
     async initializeSession (): Promise<void> {
         await super.initializeSession()
+        this.sessionInitFailed = false
         try {
             await this.initializeSessionMaybeMultiplex(true)
         } catch {
@@ -184,6 +188,9 @@ export class SSHTabComponent extends ConnectableTerminalTabComponent<SSHProfile>
             } catch (e) {
                 console.error('SSH session initialization failed', e)
                 this.write(colors.black.bgRed(' X ') + ' ' + colors.red(e.message) + '\r\n')
+                // AISHELL: 标记连接失败（标签页红点用；此路径 session 已设置但未打开，
+                // 且不走 offerReconnection，原有信号无法反映失败状态）
+                this.sessionInitFailed = true
                 return
             }
         }

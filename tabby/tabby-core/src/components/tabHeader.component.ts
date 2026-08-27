@@ -80,7 +80,9 @@ export class TabHeaderComponent extends BaseComponent {
             this.statusDot = null
             return
         }
-        if (terminals.some((t: any) => t.session === null && t.reconnectOffered)) {
+        // 连接失败：SSH 初始化失败标记（session 已设置但未打开，不走 offerReconnection）；
+        // 掉线：session 置空且已提示重连
+        if (terminals.some((t: any) => t.sessionInitFailed === true || (t.session === null && t.reconnectOffered))) {
             this.statusDot = 'red'
             return
         }

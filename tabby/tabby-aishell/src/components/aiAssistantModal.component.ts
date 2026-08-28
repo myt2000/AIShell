@@ -28,6 +28,17 @@ interface UiMessage {
     executedActions?: boolean[]
 }
 
+function newId (): string {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+}
+
+interface StoredConversation {
+    id: string
+    title: string
+    updatedAt: number
+    messages: UiMessage[]
+}
+
 /**
  * AI 助手对话窗口：
  * - 快捷动作：解释选中内容 / 诊断最近输出 / 分析日志 / 生成命令
@@ -42,6 +53,13 @@ export class AiAssistantModalComponent extends BaseComponent {
     messages: UiMessage[] = []
     input = ''
     busy = false
+
+    /** AISHELL: 会话持久化与历史 */
+    currentConversationId = newId()
+    showHistory = false
+    historyList: StoredConversation[] = []
+    /** 执行动作后自动回传终端输出让 AI 继续分析（Codex 式观察环） */
+    autoAnalyze = window.localStorage['aishell:ai-autoanalyze'] !== '0'
 
     /** 打开时预置的首条请求（来自右键菜单） */
     presetPrompt: string|null = null
@@ -75,11 +93,78 @@ export class AiAssistantModalComponent extends BaseComponent {
     }
 
     ngOnInit (): void {
+        // AISHELL: 恢复最近一次会话；有预置提问则开新会话
+        const conversations = this.loadConversations()
+        this.historyList = conversations
+        if (!this.presetPrompt && conversations.length) {
+            const latest = conversations[0]
+            this.currentConversationId = latest.id
+            this.messages = latest.messages ?? []
+        }
         if (this.presetPrompt) {
             const prompt = this.presetPrompt
             this.presetPrompt = null
             setTimeout(() => this.submit(prompt))
         }
+    }
+
+    // AISHELL: ===== 会话持久化（localStorage，最多 50 条，单会话最多 200 条消息） =====
+
+    private loadConversations (): StoredConversation[] {
+        try {
+            const list: StoredConversation[] = JSON.parse(window.localStorage['aishell:ai-conversations'] ?? '[]')
+            return Array.isArray(list) ? list.sort((a, b) => b.updatedAt - a.updatedAt) : []
+        } catch {
+            return []
+        }
+    }
+
+    private persistCurrent (): void {
+        try {
+            if (!this.messages.length) { return }
+            const title = (this.messages.find(m => m.role === 'user')?.content ?? '会话').slice(0, 40)
+            const list = this.loadConversations().filter(c => c.id !== this.currentConversationId)
+            list.unshift({
+                id: this.currentConversationId,
+                title,
+                updatedAt: Date.now(),
+                messages: this.messages.slice(-200),
+            })
+            window.localStorage['aishell:ai-conversations'] = JSON.stringify(list.slice(0, 50))
+            this.historyList = this.loadConversations()
+        } catch (e) {
+            console.warn('AIShell: failed to persist AI conversation', e)
+        }
+    }
+
+    newConversation (): void {
+        this.messages = []
+        this.currentConversationId = newId()
+        this.showHistory = false
+    }
+
+    openConversation (id: string): void {
+        const conv = this.loadConversations().find(c => c.id === id)
+        if (!conv) { return }
+        this.currentConversationId = conv.id
+        this.messages = conv.messages ?? []
+        this.showHistory = false
+        this.scrollHistoryToBottom()
+    }
+
+    deleteConversation (id: string, event: MouseEvent): void {
+        event.stopPropagation()
+        const list = this.loadConversations().filter(c => c.id !== id)
+        window.localStorage['aishell:ai-conversations'] = JSON.stringify(list)
+        this.historyList = list
+        if (id === this.currentConversationId) {
+            this.newConversation()
+        }
+    }
+
+    toggleAutoAnalyze (): void {
+        this.autoAnalyze = !this.autoAnalyze
+        window.localStorage['aishell:ai-autoanalyze'] = this.autoAnalyze ? '1' : '0'
     }
 
     get hasSelection (): boolean {
@@ -128,6 +213,7 @@ export class AiAssistantModalComponent extends BaseComponent {
             this.messages.push({ role: 'assistant', content: e?.message ?? String(e), error: true })
         } finally {
             this.busy = false
+            this.persistCurrent()
             this.scrollHistoryToBottom()
         }
     }
@@ -255,18 +341,39 @@ export class AiAssistantModalComponent extends BaseComponent {
             }
             message.executedActions ??= []
             message.executedActions[index] = true
+            const command = action.command
             if (action.targets === 'all') {
                 // 复用批量命令（内置危险命令确认）
-                void this.batch.runAgainstOpenTabs([action.command]).catch(e => this.notifications.error(String(e)))
+                void this.batch.runAgainstOpenTabs([command]).catch(e => this.notifications.error(String(e)))
             } else {
                 const tab = this.terminalContext.activeTerminalTab
                 if (tab) {
-                    tab.sendInput(action.command + '\n')
+                    tab.sendInput(command + '\n')
                 } else {
                     this.notifications.error(this.translate.instant('No open terminal tabs'))
                 }
             }
+            this.scheduleAutoAnalyze(command)
         }
+    }
+
+    /** AISHELL: Codex 式观察环——命令执行后延时抓取各窗口输出自动回传给 AI 继续分析 */
+    private scheduleAutoAnalyze (command: string): void {
+        if (!this.autoAnalyze) { return }
+        setTimeout(() => {
+            if (this.busy || !this.messages.length) { return }
+            const tabs = this.terminalContext.getOpenTerminalTabs()
+            if (!tabs.length) { return }
+            const parts: string[] = []
+            for (const tab of tabs.slice(0, 6)) {
+                const output = this.terminalContext.getRecentOutput(tab, 60).trim()
+                if (output) {
+                    parts.push(`--- ${tab.title} ---\n${output.slice(-1200)}`)
+                }
+            }
+            if (!parts.length) { return }
+            void this.submit(`[自动回传] 刚才执行的命令 "${command}" 的各窗口输出如下，请结合此前的目标继续分析并给出结论/下一步：\n\n${parts.join('\n\n')}`)
+        }, 9000)
     }
 
     /** AISHELL: 只读账号硬校验——剥离引号内容后检出写入/变更类操作即拒绝 */

@@ -4,9 +4,32 @@
             i.fas.fa-robot.me-2
             | {{ 'AI Assistant'|translate }}
         div
+            // AISHELL: 新会话 / 历史会话 / 自动分析开关
+            button.btn.btn-link(title='"New conversation"|translate', (click)='newConversation()')
+                i.fas.fa-plus
+            button.btn.btn-link(title='"History"|translate', (click)='showHistory = !showHistory')
+                i.fas.fa-clock-rotate-left
+            button.btn.btn-link(
+                [title]='(autoAnalyze ? "Auto-analyze: ON" : "Auto-analyze: OFF")|translate',
+                (click)='toggleAutoAnalyze()'
+            )
+                i.fas(*ngIf='autoAnalyze', class='fa-circle-check text-success')
+                i.fas(*ngIf='!autoAnalyze', class='fa-circle-xmark text-muted')
             button.btn.btn-link(title='"Settings"|translate', (click)='openSettings()')
                 i.fas.fa-gear
             button.btn.btn-link.close(type='button', (click)='cancel()') ×
+
+    // AISHELL: 历史会话列表
+    .history-panel(*ngIf='showHistory')
+        .history-empty(*ngIf='!historyList.length') {{ 'No history conversations'|translate }}
+        .history-item(*ngFor='let c of historyList', (click)='openConversation(c.id)')
+            .history-item-title {{ c.title }}
+            .history-item-time.text-muted {{ c.updatedAt | date:'MM-dd HH:mm' }}
+            button.btn.btn-sm.btn-link.text-danger.history-item-del(
+                type='button',
+                (click)='deleteConversation(c.id, $event)'
+            ): i.fas.fa-trash(aria-hidden='true')
+
     .modal-body.d-flex.flex-column
         .quick-actions.btn-group.btn-group-sm.mb-2
             button.btn.btn-secondary(type='button', [disabled]='busy || !hasSelection', (click)='explainSelection()') {{ 'Explain selection'|translate }}

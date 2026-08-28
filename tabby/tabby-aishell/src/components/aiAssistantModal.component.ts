@@ -48,12 +48,17 @@ export class AiAssistantModalComponent extends BaseComponent {
 
     @ViewChild('history') historyElement: ElementRef|undefined
 
-    private systemPromptBase = '你是一名资深的 Linux 运维工程师助手。用户在使用 SSH 终端工具 AIShell。回答使用中文，简洁准确；给出的命令要给出解释。\n' +
-        '你可以通过动作标记让用户一键执行操作（用户点击按钮确认后才执行，不会自动执行）。可用动作：\n' +
-        '打开某文件夹下全部服务器：<<ACTION>>{"type":"open_group","group":"文件夹名"}<<END>>\n' +
+    private systemPromptBase = '你是一名资深的 Linux 运维工程师助手。用户在使用 SSH 终端工具 AIShell 管理个推的服务器。回答使用中文，简洁准确；给出的命令要给出解释。\n\n' +
+        '【环境约定】\n' +
+        '1. 服务器按 业务站点/模块名 分文件夹管理（下面附完整清单）。\n' +
+        '2. 每个模块的日志固定在 /app/newgetui/模块名/logs 目录（模块名即树中的文件夹名，如 gsmd 的日志在 /app/newgetui/gsmd/logs）。查日志的命令必须用该绝对路径，不要依赖当前目录。\n' +
+        '3. 服务器登录账号为只读账号：只能查询，不能写入或修改。生成的命令必须全部是只读命令（cat/head/tail/grep/egrep/awk/sed -n/ls/find/df/du/ps/top/netstat/ss/stat/wc/cut/sort/uniq 等），严禁包含重定向(> >>)、管道写文件、tee、touch、mkdir、rm、mv、cp、chmod、chown、kill、sed -i、vi/vim、reboot、shutdown 等任何写入或变更类操作。\n' +
+        '4. 按手机号/时间查短信日志的典型方式：grep "手机号" /app/newgetui/模块名/logs/对应日期文件（先用 ls 看文件名规律再 grep 也可以分两步）。\n\n' +
+        '【动作标记】你可以让用户一键执行（点按钮确认后才执行，不会自动执行）：\n' +
+        '打开某文件夹下全部服务器：<<ACTION>>{"type":"open_group","group":"文件夹名或路径"}<<END>>\n' +
         '连接某台服务器：<<ACTION>>{"type":"open_profile","name":"服务器名"}<<END>>\n' +
         '在终端窗口执行命令：<<ACTION>>{"type":"run","command":"命令","targets":"current或all"}<<END>>\n' +
-        '当用户表达"打开/连上某文件夹所有服务器"或要求直接执行命令时，先简短说明，再附上对应动作标记。动作标记之外不要输出其他 JSON。'
+        '同一条回复可以给多个动作（例如先 open_group 打开某模块全部服务器，再给 run 命令到 all 窗口按上述日志路径查询）。用户要先打开服务器再查日志时，应同时给出打开动作和查询命令动作，并说明命令会在打开完成后执行。动作标记之外不要输出其他 JSON。'
 
     constructor (
         public modalInstance: NgbActiveModal,
@@ -241,6 +246,13 @@ export class AiAssistantModalComponent extends BaseComponent {
         }
 
         if (action.type === 'run' && action.command) {
+            if (!AiAssistantModalComponent.isReadOnlySafe(action.command)) {
+                this.notifications.error(
+                    this.translate.instant('Command rejected: read-only account'),
+                    action.command,
+                )
+                return
+            }
             message.executedActions ??= []
             message.executedActions[index] = true
             if (action.targets === 'all') {
@@ -255,6 +267,13 @@ export class AiAssistantModalComponent extends BaseComponent {
                 }
             }
         }
+    }
+
+    /** AISHELL: 只读账号硬校验——剥离引号内容后检出写入/变更类操作即拒绝 */
+    static isReadOnlySafe (command: string): boolean {
+        const bare = command.replace(/'[^']*'/g, ' ').replace(/"[^"]*"/g, ' ')
+        const forbidden = /(>>|>|\btee\b|\btouch\b|\bmkdir\b|\brmdir\b|\brm\b|\bmv\b|\bcp\b|\bchmod\b|\bchown\b|\bchattr\b|\bkill\b|\bpkill\b|\breboot\b|\bshutdown\b|\bhalt\b|\bdd\b|\bmkfs\b|sed +-i|\bvi\b|\bvim\b|\bnano\b|\byum\b|\bapt\b|find +-delete|-exec +rm)/i
+        return !forbidden.test(bare)
     }
 
     private resolveGroup (query: string): { id: string }|null {

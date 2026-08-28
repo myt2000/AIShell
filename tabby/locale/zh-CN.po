@@ -3236,3 +3236,7 @@ msgstr "连接"
 #: tabby-aishell/src/components/aiAssistantModal.component.ts
 msgid "Opening {n} servers"
 msgstr "正在打开 {n} 台服务器"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Command rejected: read-only account"
+msgstr "命令已拦截：服务器为只读账号，禁止执行写入/修改类命令"

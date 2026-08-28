@@ -14,8 +14,10 @@ export class AIShellConfigProvider extends ConfigProvider {
                 apiKey: '',
                 model: '',
                 maxOutputTokens: 2048,
-                /** AISHELL: 发给 AI 的日志/上下文字符上限，超出智能截断 */
+                /** AISHELL: 发送给 AI 的日志/上下文字符上限，超出智能截断 */
                 maxContextChars: 24000,
+                /** AISHELL: 接口协议 openai/anthropic（CC Switch 本地代理）；必须在 defaults 里注册才会经 ConfigProxy 持久化 */
+                protocol: 'openai',
             },
             sessionLog: {
                 /** AISHELL: 终端输出实时落盘 */

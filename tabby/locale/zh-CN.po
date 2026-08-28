@@ -3184,3 +3184,19 @@ msgstr "已加密存储（输入以更换）"
 #: tabby-terminal/src/components/loginScriptsSettings.component.ts
 msgid "Password"
 msgstr "密码"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.ts
+msgid "CC Switch not detected"
+msgstr "未检测到 CC Switch"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.ts
+msgid "Make sure CC Switch is running with its local proxy enabled."
+msgstr "请确认 CC Switch 正在运行且已开启本地代理。"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "CC Switch not running"
+msgstr "CC Switch 未运行"
+
+#: tabby-aishell/src/components/aiSettingsModal.component.pug
+msgid "API protocol"
+msgstr "接口协议"

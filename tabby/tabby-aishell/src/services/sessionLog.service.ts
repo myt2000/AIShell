@@ -85,9 +85,14 @@ export class SessionLogService implements OnDestroy {
     }
 
     async updateSettings (settings: Partial<SessionLogSettings>): Promise<void> {
-        const aishell = JSON.parse(JSON.stringify((this.config.store as any).aishell ?? {}))
-        aishell.sessionLog = { ...this.settings, ...settings }
-        ;(this.config.store as any).aishell = aishell
+        // AISHELL: ConfigProxy 限制——结构体键只读，逐叶子键写入
+        const sessionLog = (this.config.store as any).aishell?.sessionLog
+        if (!sessionLog) {
+            throw new Error('aishell.sessionLog config unavailable')
+        }
+        for (const [key, value] of Object.entries({ ...this.settings, ...settings })) {
+            sessionLog[key] = value
+        }
         await this.config.save()
     }
 

@@ -17,6 +17,26 @@
                     type='button',
                     (click)='applyPreset(p)'
                 ) {{ p.name }}
+                // AISHELL: 一键对接 CC Switch 本地代理
+                button.btn.btn-success(
+                    type='button',
+                    [ngbTooltip]='ccSwitchInfo ? ccSwitchInfo.baseUrl : ("CC Switch not running"|translate)',
+                    (click)='applyCCSwitch()'
+                ) CC Switch
+
+        .mb-2
+            label.form-label {{ 'API protocol'|translate }}
+            .btn-group.btn-group-sm
+                button.btn.btn-secondary(
+                    type='button',
+                    [class.active]='protocol === "openai"',
+                    (click)='protocol = "openai"'
+                ) OpenAI
+                button.btn.btn-secondary(
+                    type='button',
+                    [class.active]='protocol === "anthropic"',
+                    (click)='protocol = "anthropic"'
+                ) Anthropic / CC Switch
 
         .mb-3
             label.form-label {{ 'API base URL (OpenAI compatible)'|translate }}
@@ -26,7 +46,7 @@
             label.form-label {{ 'Model'|translate }}
             input.form-control(type='text', [(ngModel)]='model', placeholder='gpt-4o-mini')
 
-        .mb-3
+        .mb-3(*ngIf='protocol === "openai"')
             label.form-label {{ 'API key (empty for local models)'|translate }}
             input.form-control(type='password', [(ngModel)]='apiKey', autocomplete='off')
 

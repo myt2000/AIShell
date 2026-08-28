@@ -2,7 +2,7 @@ import { Component } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { BaseComponent, NotificationsService, TranslateService } from 'tabby-core'
 
-import { AiService } from '../services/ai.service'
+import { AiService, CCSwitchInfo } from '../services/ai.service'
 import { SessionLogService } from '../services/sessionLog.service'
 
 /** @hidden */
@@ -17,6 +17,8 @@ export class AiSettingsModalComponent extends BaseComponent {
     model = ''
     maxOutputTokens = 2048
     maxContextChars = 24000
+    protocol: 'openai' | 'anthropic' = 'openai'
+    ccSwitchInfo: CCSwitchInfo|null = null
 
     // AISHELL: 会话录制
     sessionLogEnabled = false
@@ -46,6 +48,8 @@ export class AiSettingsModalComponent extends BaseComponent {
         this.model = s.model
         this.maxOutputTokens = s.maxOutputTokens
         this.maxContextChars = s.maxContextChars
+        this.protocol = s.protocol ?? 'openai'
+        this.ccSwitchInfo = AiService.detectCCSwitch()
         const sl = this.sessionLog.settings
         this.sessionLogEnabled = sl.enabled
         this.sessionLogDirectory = sl.directory
@@ -62,8 +66,26 @@ export class AiSettingsModalComponent extends BaseComponent {
     }
 
     applyPreset (preset: { baseUrl: string, model: string }): void {
+        this.protocol = 'openai'
         this.baseUrl = preset.baseUrl
         this.model = preset.model
+    }
+
+    /** AISHELL: 一键对接 CC Switch 本地代理（Anthropic 协议；在 CC Switch 里切供应商即刻生效） */
+    applyCCSwitch (): void {
+        this.ccSwitchInfo = AiService.detectCCSwitch()
+        if (!this.ccSwitchInfo) {
+            this.notifications.info(
+                this.translate.instant('CC Switch not detected'),
+                this.translate.instant('Make sure CC Switch is running with its local proxy enabled.'),
+            )
+            return
+        }
+        this.protocol = 'anthropic'
+        this.enabled = true
+        this.baseUrl = this.ccSwitchInfo.baseUrl
+        this.apiKey = 'PROXY_MANAGED'
+        this.model = this.ccSwitchInfo.haikuModel ?? this.ccSwitchInfo.sonnetModel ?? this.model
     }
 
     async browseDirectory (): Promise<void> {
@@ -88,6 +110,7 @@ export class AiSettingsModalComponent extends BaseComponent {
             model: this.model.trim(),
             maxOutputTokens: this.maxOutputTokens,
             maxContextChars: this.maxContextChars,
+            protocol: this.protocol,
         })
         await this.sessionLog.updateSettings({
             enabled: this.sessionLogEnabled,

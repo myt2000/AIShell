@@ -3200,3 +3200,39 @@ msgstr "CC Switch 未运行"
 #: tabby-aishell/src/components/aiSettingsModal.component.pug
 msgid "API protocol"
 msgstr "接口协议"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Connect all servers in \"{group}\""
+msgstr "连接文件夹「{group}」下全部服务器"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Connect \"{name}\""
+msgstr "连接「{name}」"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Run in all tabs: {command}"
+msgstr "在全部窗口执行：{command}"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Run in current tab: {command}"
+msgstr "在当前窗口执行：{command}"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Folder \"{group}\" not found"
+msgstr "未找到文件夹「{group}」"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Server \"{name}\" not found"
+msgstr "未找到服务器「{name}」"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Connect {n} servers in \"{group}\"?"
+msgstr "连接「{group}」下的 {n} 台服务器？"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Connect"
+msgstr "连接"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Opening {n} servers"
+msgstr "正在打开 {n} 台服务器"

@@ -20,6 +20,16 @@
             .msg(*ngFor='let m of messages', [class.user]='m.role === "user"', [class.error]='m.error')
                 .role {{ m.role === 'user' ? 'You' : 'AI' }}
                 .content {{ m.content }}
+                // AISHELL: AI 生成的可执行动作按钮（点击确认后执行）
+                .msg-actions(*ngIf='m.actions?.length')
+                    button.btn.btn-sm.btn-primary.msg-action-btn(
+                        *ngFor='let a of m.actions; let i = index',
+                        type='button',
+                        [disabled]='m.executedActions?.[i]',
+                        (click)='executeAction(m, i)'
+                    )
+                        i.fas.fa-play.me-1(aria-hidden='true')
+                        | {{ actionLabel(a) }}{{ m.executedActions?.[i] ? ' ✓' : '' }}
             .msg.busy-indicator(*ngIf='busy')
                 .role AI
                 .content

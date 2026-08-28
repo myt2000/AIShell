@@ -50,3 +50,16 @@
         resize: none;
     }
 }
+
+/* AISHELL: AI 动作按钮 */
+.msg-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    margin-top: .35rem;
+}
+
+.msg-action-btn {
+    font-size: .72rem;
+    padding: .15rem .5rem;
+}

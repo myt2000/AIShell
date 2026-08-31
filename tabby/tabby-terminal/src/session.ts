@@ -59,6 +59,11 @@ export abstract class BaseSession {
         this.initialDataBuffer = Buffer.from('')
     }
 
+    /** AISHELL: 登录脚本全部执行完毕信号（自动日志查询等外部流程等待用）；无处理器时为 null */
+    get loginScriptsDone$ (): Observable<void>|null {
+        return this.loginScriptProcessor?.scriptsDone$ ?? null
+    }
+
     setLoginScriptsOptions (options: LoginScriptsOptions): void {
         const newProcessor = new LoginScriptProcessor(this.logger, options)
         if (this.loginScriptProcessor) {

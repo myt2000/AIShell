@@ -18,6 +18,7 @@ import { ManageTemplatesModalComponent } from './components/manageTemplatesModal
 import { AiService } from './services/ai.service'
 import { BatchCommandService } from './services/batchCommand.service'
 import { LogTimelineService } from './services/logTimeline.service'
+import { LogQueryOrchestrator } from './services/logQueryOrchestrator.service'
 import { SessionLogService } from './services/sessionLog.service'
 import { SecurePasswordService } from './services/securePassword.service'
 import { TemplateService } from './services/template.service'
@@ -57,6 +58,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
         AiService,
         TerminalContextService,
         LogTimelineService,
+        LogQueryOrchestrator,
         { provide: ConfigProvider, useClass: AIShellConfigProvider, multi: true },
         { provide: CommandProvider, useClass: AIShellCommandProvider, multi: true },
         { provide: TabContextMenuItemProvider, useClass: AiContextMenuProvider, multi: true },
@@ -81,6 +83,8 @@ export { BatchCommandService } from './services/batchCommand.service'
 export { AiService } from './services/ai.service'
 export { TerminalContextService } from './services/terminalContext.service'
 export { LogTimelineService } from './services/logTimeline.service'
+export { LogQueryOrchestrator } from './services/logQueryOrchestrator.service'
+export * from './services/logQueryRules'
 export { SessionLogService } from './services/sessionLog.service'
 export { KeyboardBroadcastService } from './services/keyboardBroadcast.service'
 export { SecurePasswordService } from './services/securePassword.service'

@@ -3,19 +3,26 @@ import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 
 import { BaseComponent, TranslateService, ProfilesService, PlatformService, NotificationsService, PartialProfile, Profile } from 'tabby-core'
 
-import { AiChatMessage } from '../services/ai.service'
-import { AiService } from '../services/ai.service'
+import { AiChatMessage, AiService } from '../services/ai.service'
 import { TerminalContextService } from '../services/terminalContext.service'
 import { BatchCommandService } from '../services/batchCommand.service'
+import { LogQueryOrchestrator } from '../services/logQueryOrchestrator.service'
+import { LogQueryRequest } from '../services/logQueryRules'
 import { AiSettingsModalComponent } from './aiSettingsModal.component'
 import { LogAnalysisModalComponent } from './logAnalysisModal.component'
 
 interface AiAction {
-    type: 'open_group' | 'open_profile' | 'run'
+    type: 'open_group' | 'open_profile' | 'run' | 'log_query'
     group?: string
     name?: string
     command?: string
     targets?: 'current' | 'all'
+    task_id?: string
+    cid?: string
+    appid?: string
+    date?: string
+    server?: string
+    mode?: 'auto' | 'confirm'
 }
 
 interface UiMessage {
@@ -76,7 +83,8 @@ export class AiAssistantModalComponent extends BaseComponent {
         '打开某文件夹下全部服务器：<<ACTION>>{"type":"open_group","group":"文件夹名或路径"}<<END>>\n' +
         '连接某台服务器：<<ACTION>>{"type":"open_profile","name":"服务器名"}<<END>>\n' +
         '在终端窗口执行命令：<<ACTION>>{"type":"run","command":"命令","targets":"current或all"}<<END>>\n' +
-        '同一条回复可以给多个动作（例如先 open_group 打开某模块全部服务器，再给 run 命令到 all 窗口按上述日志路径查询）。用户要先打开服务器再查日志时，应同时给出打开动作和查询命令动作，并说明命令会在打开完成后执行。动作标记之外不要输出其他 JSON。'
+        '自动查询推送日志：<<ACTION>>{"type":"log_query","task_id":"任务ID","cid":"设备CID","mode":"auto"}<<END>>\n' +
+        '涉及 task_id/cid 的消息下发查询时，优先只输出 log_query 动作，不要自行拼接多条 run 命令。log_query 会自动打开对应模块服务器、执行只读查询、解析结果并继续下一模块。动作标记之外不要输出其他 JSON。'
 
     constructor (
         public modalInstance: NgbActiveModal,
@@ -84,6 +92,7 @@ export class AiAssistantModalComponent extends BaseComponent {
         private terminalContext: TerminalContextService,
         private profilesService: ProfilesService,
         private batch: BatchCommandService,
+        private logQuery: LogQueryOrchestrator,
         private platform: PlatformService,
         private notifications: NotificationsService,
         private ngbModal: NgbModal,
@@ -208,6 +217,11 @@ export class AiAssistantModalComponent extends BaseComponent {
         try {
             const answer = await this.ai.chat(this.buildChatMessages(prompt))
             const { content, actions } = this.parseActions(answer)
+            const detected = LogQueryOrchestrator.parseRequest(prompt)
+            // AI 未输出结构化动作时，使用本地参数识别兜底，避免退化为手工逐条执行。
+            if (detected && !actions.some(action => action.type === 'log_query')) {
+                actions.push(this.requestToAction(detected))
+            }
             this.messages.push({ role: 'assistant', content, actions: actions.length ? actions : undefined, executedActions: actions.length ? [] : undefined })
         } catch (e: any) {
             this.messages.push({ role: 'assistant', content: e?.message ?? String(e), error: true })
@@ -286,6 +300,9 @@ export class AiAssistantModalComponent extends BaseComponent {
                 ? this.translate.instant('Run in all tabs: {command}', { command: action.command ?? '' })
                 : this.translate.instant('Run in current tab: {command}', { command: action.command ?? '' })
         }
+        if (action.type === 'log_query') {
+            return this.translate.instant('Automatic log query: {taskId}', { taskId: action.task_id ?? '' })
+        }
         return JSON.stringify(action)
     }
 
@@ -354,6 +371,113 @@ export class AiAssistantModalComponent extends BaseComponent {
                 }
             }
             this.scheduleAutoAnalyze(command)
+        }
+
+        if (action.type === 'log_query') {
+            const taskId = action.task_id ?? ''
+            const cid = action.cid ?? ''
+            if (!taskId || !cid) {
+                this.notifications.error(this.translate.instant('Automatic log query requires task_id and cid'))
+                return
+            }
+            const request: LogQueryRequest = {
+                taskId,
+                cid,
+                appId: action.appid,
+                date: action.date,
+                server: action.server,
+                mode: action.mode ?? 'auto',
+            }
+            // 启动确认（自动模式同样必须确认一次，见规范 §11）
+            const preview = await this.logQuery.previewFirstStep(request).catch(() => null)
+            if (!preview) {
+                this.notifications.error(this.translate.instant('Cannot resolve entry module for "{taskId}"', { taskId }))
+                return
+            }
+            const result = await this.platform.showMessageBox({
+                type: 'warning',
+                message: this.translate.instant('Start automatic log query?'),
+                detail: this.translate.instant('Task: {taskId}\nDevice: {cid}\nEntry module: {module}\nServer: {server}\nFirst command:\n{command}', {
+                    taskId, cid, module: preview.module, server: preview.server, command: preview.command,
+                }),
+                buttons: [
+                    this.translate.instant('Start'),
+                    this.translate.instant('Cancel'),
+                ],
+                defaultId: 1,
+                cancelId: 1,
+            })
+            if (result.response !== 0) { return }
+
+            message.executedActions ??= []
+            message.executedActions[index] = true
+            void this.runAutomaticLogQuery(request, message, index)
+        }
+    }
+
+    private requestToAction (request: LogQueryRequest): AiAction {
+        return {
+            type: 'log_query',
+            task_id: request.taskId,
+            cid: request.cid,
+            appid: request.appId,
+            date: request.date,
+            server: request.server,
+            mode: request.mode,
+        }
+    }
+
+    private async runAutomaticLogQuery (request: LogQueryRequest, message: UiMessage, index: number): Promise<void> {
+        const confirmHook = request.mode === 'confirm'
+            ? async (module: string, logType: string, command: string, lastInterpretation: string|null) => {
+                const result = await this.platform.showMessageBox({
+                    type: 'warning',
+                    message: this.translate.instant('Execute this step?'),
+                    detail: this.translate.instant('Module: {module}/{logType}\nCommand:\n{command}\nPrevious step: {prev}', {
+                        module, logType, command, prev: lastInterpretation ?? '(none)',
+                    }),
+                    buttons: [
+                        this.translate.instant('Execute'),
+                        this.translate.instant('Skip'),
+                    ],
+                    defaultId: 0,
+                    cancelId: 1,
+                })
+                return result.response === 0
+            }
+            : null
+
+        const result = await this.logQuery.run(request, confirmHook ? { confirmStep: confirmHook } : undefined)
+
+        if (result.status !== 'finished') {
+            // 未完成（暂停/失败）恢复按钮，允许用户调整后重试
+            message.executedActions ??= []
+            message.executedActions[index] = false
+        }
+
+        const summary = result.events
+            .filter(event => event.phase === 'parsing' || event.phase === 'finished' || event.phase === 'paused' || event.phase === 'failed')
+            .map(event => `${event.module ? `${event.module}/${event.logType}: ` : ''}${event.message}`)
+            .join('\n')
+        if (summary) {
+            this.messages.push({
+                role: 'assistant',
+                content: `自动日志查询${result.status === 'finished' ? '完成' : '已暂停'}：\n${summary}`,
+                error: result.status === 'failed',
+            })
+            this.persistCurrent()
+            this.scrollHistoryToBottom()
+
+            // 完成后自动回传给 AI 出最终结论（每步输出截断，总量受控）
+            if (result.status === 'finished') {
+                const keyOutputs = result.events
+                    .filter(e => e.phase === 'parsing' && e.output)
+                    .map(e => `--- ${e.module}/${e.logType} ---\n${(e.output ?? '').trim().slice(-1500)}`)
+                    .join('\n\n')
+                    .slice(0, 10000)
+                const conclusionPrompt = `[自动日志查询结果] 任务:${request.taskId} 设备:${request.cid}\n\n步骤摘要:\n${summary}\n\n关键原始输出:\n${keyOutputs || '(无)'}\n\n请根据以上结果给出最终结论：消息是否下发成功/送达，说明链路判断依据；若规则或字段无法判断，请明确指出需要人工核对什么。`
+                void this.submit(conclusionPrompt)
+            }
         }
     }
 

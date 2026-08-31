@@ -3260,3 +3260,47 @@ msgstr "自动分析：关"
 #: tabby-aishell/src/components/aiAssistantModal.component.pug
 msgid "No history conversations"
 msgstr "暂无历史会话"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Automatic log query requires task_id and cid"
+msgstr "自动日志查询缺少 task_id 或 cid"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Cannot resolve entry module for \"{taskId}\""
+msgstr "无法识别任务“{taskId}”的起始模块"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Start automatic log query?"
+msgstr "开始自动日志查询？"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Task: {taskId}\nDevice: {cid}\nEntry module: {module}\nServer: {server}\nFirst command:\n{command}"
+msgstr "任务：{taskId}\n设备：{cid}\n起始模块：{module}\n服务器：{server}\n首条命令：\n{command}"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Start"
+msgstr "开始"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Execute this step?"
+msgstr "执行本步骤？"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Module: {module}/{logType}\nCommand:\n{command}\nPrevious step: {prev}"
+msgstr "模块：{module}/{logType}\n命令：\n{command}\n上一步结论：{prev}"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Execute"
+msgstr "执行"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Skip"
+msgstr "跳过"
+
+#: tabby-aishell/src/services/logQueryOrchestrator.service.ts
+msgid "Automatic log query failed"
+msgstr "自动日志查询失败"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Automatic log query: {taskId}"
+msgstr "自动日志查询：{taskId}"

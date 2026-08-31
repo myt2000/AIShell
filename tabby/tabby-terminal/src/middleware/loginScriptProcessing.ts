@@ -1,4 +1,5 @@
 import deepClone from 'clone-deep'
+import { Observable, ReplaySubject } from 'rxjs'
 import { Logger } from 'tabby-core'
 import { SessionMiddleware } from '../api/middleware'
 
@@ -24,6 +25,24 @@ export class LoginScriptProcessor extends SessionMiddleware {
     private remainingScripts: LoginScript[] = []
     private variables: Record<string, string>
 
+    /** AISHELL: 全部脚本执行完毕（含被 flexible 覆盖作废）后触发一次；
+     * ReplaySubject(1) 让晚订阅者立即收到（复用已打开窗口的场景） */
+    private scriptsDone = new ReplaySubject<void>(1)
+
+    get scriptsDone$ (): Observable<void> {
+        return this.scriptsDone.asObservable()
+    }
+
+    private scriptsDoneFired = false
+
+    private maybeFireDone (): void {
+        if (!this.scriptsDoneFired && this.remainingScripts.length === 0) {
+            this.scriptsDoneFired = true
+            this.scriptsDone.next()
+            this.scriptsDone.complete()
+        }
+    }
+
     private escapeSeqMap = {
         a: '\x07',
         b: '\x08',
@@ -48,6 +67,8 @@ export class LoginScriptProcessor extends SessionMiddleware {
             }
             script.send = this.unescape(script.send)
         }
+        // 无脚本时立即视为完成
+        this.maybeFireDone()
     }
 
     feedFromSession (data: Buffer): void {
@@ -89,6 +110,7 @@ export class LoginScriptProcessor extends SessionMiddleware {
             }
         }
 
+        this.maybeFireDone()
         super.feedFromSession(data)
     }
 
@@ -102,6 +124,7 @@ export class LoginScriptProcessor extends SessionMiddleware {
                 break
             }
         }
+        this.maybeFireDone()
     }
 
     // AISHELL: $VAR / ${VAR} 替换，未定义的变量保持原样

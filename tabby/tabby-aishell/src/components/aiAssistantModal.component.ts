@@ -64,7 +64,8 @@ export class AiAssistantModalComponent extends BaseComponent {
 
     /** AISHELL: 会话持久化与历史 */
     currentConversationId = newId()
-    showHistory = false
+    /** AISHELL: 右侧会话侧栏展开状态（localStorage 持久化） */
+    sidebarOpen = window.localStorage['aishell:ai-sidebar'] !== '0'
     historyList: StoredConversation[] = []
     /** 执行动作后自动回传终端输出让 AI 继续分析（Codex 式观察环） */
     autoAnalyze = window.localStorage['aishell:ai-autoanalyze'] !== '0'
@@ -153,7 +154,6 @@ export class AiAssistantModalComponent extends BaseComponent {
     newConversation (): void {
         this.messages = []
         this.currentConversationId = newId()
-        this.showHistory = false
     }
 
     openConversation (id: string): void {
@@ -161,7 +161,7 @@ export class AiAssistantModalComponent extends BaseComponent {
         if (!conv) { return }
         this.currentConversationId = conv.id
         this.messages = conv.messages ?? []
-        this.showHistory = false
+        this.sidebarOpen = true
         this.scrollHistoryToBottom()
     }
 
@@ -173,6 +173,12 @@ export class AiAssistantModalComponent extends BaseComponent {
         if (id === this.currentConversationId) {
             this.newConversation()
         }
+    }
+
+    // AISHELL: 侧栏折叠切换（状态持久化）
+    toggleSidebar (): void {
+        this.sidebarOpen = !this.sidebarOpen
+        window.localStorage['aishell:ai-sidebar'] = this.sidebarOpen ? '1' : '0'
     }
 
     toggleAutoAnalyze (): void {

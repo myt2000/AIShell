@@ -4,11 +4,7 @@
             i.fas.fa-robot.me-2
             | {{ 'AI Assistant'|translate }}
         div
-            // AISHELL: 新会话 / 历史会话 / 自动分析开关
-            button.btn.btn-link(title='"New conversation"|translate', (click)='newConversation()')
-                i.fas.fa-plus
-            button.btn.btn-link(title='"History"|translate', (click)='showHistory = !showHistory')
-                i.fas.fa-clock-rotate-left
+            // AISHELL: 自动分析开关 / 设置（新会话与历史在右侧栏）
             button.btn.btn-link(
                 [title]='(autoAnalyze ? "Auto-analyze: ON" : "Auto-analyze: OFF")|translate',
                 (click)='toggleAutoAnalyze()'
@@ -19,53 +15,69 @@
                 i.fas.fa-gear
             button.btn.btn-link.close(type='button', (click)='cancel()') ×
 
-    // AISHELL: 历史会话列表
-    .history-panel(*ngIf='showHistory')
-        .history-empty(*ngIf='!historyList.length') {{ 'No history conversations'|translate }}
-        .history-item(*ngFor='let c of historyList', (click)='openConversation(c.id)')
-            .history-item-title {{ c.title }}
-            .history-item-time.text-muted {{ c.updatedAt | date:'MM-dd HH:mm' }}
-            button.btn.btn-sm.btn-link.text-danger.history-item-del(
-                type='button',
-                (click)='deleteConversation(c.id, $event)'
-            ): i.fas.fa-trash(aria-hidden='true')
+    // AISHELL: ZCode 式双栏布局——左对话 + 右会话侧栏
+    .modal-body.aishell-chat-layout
+        // 左：主对话区（历史独立滚动，输入区常驻底部）
+        .chat-main.d-flex.flex-column
+            .quick-actions.btn-group.btn-group-sm.mb-2
+                button.btn.btn-secondary(type='button', [disabled]='busy || !hasSelection', (click)='explainSelection()') {{ 'Explain selection'|translate }}
+                button.btn.btn-secondary(type='button', [disabled]='busy', (click)='diagnoseRecent()') {{ 'Diagnose output'|translate }}
+                button.btn.btn-secondary(type='button', [disabled]='busy', (click)='analyzeLogs()') {{ 'Analyze logs'|translate }}
+                button.btn.btn-secondary(type='button', (click)='openLogAnalysis()') {{ 'Multi-window logs'|translate }}
 
-    .modal-body.d-flex.flex-column
-        .quick-actions.btn-group.btn-group-sm.mb-2
-            button.btn.btn-secondary(type='button', [disabled]='busy || !hasSelection', (click)='explainSelection()') {{ 'Explain selection'|translate }}
-            button.btn.btn-secondary(type='button', [disabled]='busy', (click)='diagnoseRecent()') {{ 'Diagnose output'|translate }}
-            button.btn.btn-secondary(type='button', [disabled]='busy', (click)='analyzeLogs()') {{ 'Analyze logs'|translate }}
-            // AISHELL: 多窗口日志分析工作台入口
-            button.btn.btn-secondary(type='button', (click)='openLogAnalysis()') {{ 'Multi-window logs'|translate }}
+            .chat-history.flex-grow-1(#history)
+                .alert.alert-warning(*ngIf='messages.length === 0') {{ 'Ask anything about your servers, or use the quick actions above.'|translate }}
+                .msg(*ngFor='let m of messages', [class.user]='m.role === "user"', [class.error]='m.error')
+                    .role {{ m.role === 'user' ? 'You' : 'AI' }}
+                    .content {{ m.content }}
+                    .msg-actions(*ngIf='m.actions?.length')
+                        button.btn.btn-sm.btn-primary.msg-action-btn(
+                            *ngFor='let a of m.actions; let i = index',
+                            type='button',
+                            [disabled]='m.executedActions?.[i]',
+                            (click)='executeAction(m, i)'
+                        )
+                            i.fas.fa-play.me-1(aria-hidden='true')
+                            | {{ actionLabel(a) }}{{ m.executedActions?.[i] ? ' ✓' : '' }}
+                .msg.busy-indicator(*ngIf='busy')
+                    .role AI
+                    .content
+                        i.fas.fa-spinner.fa-spin.me-1
+                        | {{ 'Thinking…'|translate }}
 
-        .chat-history.flex-grow-1(#history)
-            .alert.alert-warning(*ngIf='messages.length === 0') {{ 'Ask anything about your servers, or use the quick actions above.'|translate }}
-            .msg(*ngFor='let m of messages', [class.user]='m.role === "user"', [class.error]='m.error')
-                .role {{ m.role === 'user' ? 'You' : 'AI' }}
-                .content {{ m.content }}
-                // AISHELL: AI 生成的可执行动作按钮（点击确认后执行）
-                .msg-actions(*ngIf='m.actions?.length')
-                    button.btn.btn-sm.btn-primary.msg-action-btn(
-                        *ngFor='let a of m.actions; let i = index',
-                        type='button',
-                        [disabled]='m.executedActions?.[i]',
-                        (click)='executeAction(m, i)'
+            // AISHELL: 输入区常驻——历史再长也不被挤出视野
+            .chat-input-area.mt-2
+                .input-group
+                    textarea.form-control(
+                        rows='2',
+                        [(ngModel)]='input',
+                        [placeholder]='"Ask about servers, logs, errors…"|translate',
+                        (keydown.enter)='onEnterKey($event)'
                     )
-                        i.fas.fa-play.me-1(aria-hidden='true')
-                        | {{ actionLabel(a) }}{{ m.executedActions?.[i] ? ' ✓' : '' }}
-            .msg.busy-indicator(*ngIf='busy')
-                .role AI
-                .content
-                    i.fas.fa-spinner.fa-spin.me-1
-                    | {{ 'Thinking…'|translate }}
+                    button.btn.btn-primary(type='button', [disabled]='busy || !input.trim()', (click)='submit()') {{ 'Send'|translate }}
 
-        .input-group.mt-2
-            textarea.form-control(
-                rows='2',
-                [(ngModel)]='input',
-                [placeholder]='"Ask about servers, logs, errors…"|translate',
-                (keydown.enter)='onEnterKey($event)'
-            )
-            button.btn.btn-primary(type='button', [disabled]='busy || !input.trim()', (click)='submit()') {{ 'Send'|translate }}
+        // 右：会话侧栏（可折叠）
+        .chat-sidebar
+            .chat-sidebar-header
+                button.btn.btn-sm.btn-primary.w-100(type='button', (click)='newConversation()')
+                    i.fas.fa-plus.me-1(aria-hidden='true')
+                    | {{ 'New conversation'|translate }}
+                button.btn.btn-sm.btn-link.chat-sidebar-toggle(type='button', (click)='toggleSidebar()')
+                    i.fas(*ngIf='sidebarOpen', class='fa-angles-right')
+                    i.fas(*ngIf='!sidebarOpen', class='fa-angles-left')
+            .history-list(*ngIf='sidebarOpen')
+                .history-empty(*ngIf='!historyList.length') {{ 'No history conversations'|translate }}
+                .history-item(
+                    *ngFor='let c of historyList',
+                    [class.active]='c.id === currentConversationId',
+                    (click)='openConversation(c.id)'
+                )
+                    .history-item-title {{ c.title }}
+                    .history-item-time.text-muted {{ c.updatedAt | date:'MM-dd HH:mm' }}
+                    button.btn.btn-sm.btn-link.text-danger.history-item-del(
+                        type='button',
+                        (click)='deleteConversation(c.id, $event)'
+                    ): i.fas.fa-trash(aria-hidden='true')
+
     .modal-footer
         button.btn.btn-secondary(type='button', (click)='cancel()') {{ 'Close'|translate }}

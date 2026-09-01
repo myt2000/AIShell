@@ -124,6 +124,14 @@ export function initialModuleForTask (taskId: string): string|null {
 
 export function normaliseDate (value: string|undefined): string|undefined {
     if (!value) { return undefined }
+    const compact = /^(20\d{2})(\d{2})(\d{2})$/.exec(value.trim())
+    if (compact) {
+        const [, y, m, d] = compact
+        const month = Number(m)
+        const day = Number(d)
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) { return `${y}${m}${d}` }
+        return undefined
+    }
     const parts = value.split(/[-/.]/).map(x => parseInt(x, 10))
     if (parts.length !== 3 || parts.some(n => isNaN(n))) { return undefined }
     const [y, m, d] = parts

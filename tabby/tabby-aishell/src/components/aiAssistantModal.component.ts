@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild } from '@angular/core'
+import { Component, ElementRef, HostListener, ViewChild } from '@angular/core'
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 
 import { BaseComponent, TranslateService, ProfilesService, PlatformService, NotificationsService, PartialProfile, Profile } from 'tabby-core'
@@ -184,6 +184,24 @@ export class AiAssistantModalComponent extends BaseComponent {
     toggleAutoAnalyze (): void {
         this.autoAnalyze = !this.autoAnalyze
         window.localStorage['aishell:ai-autoanalyze'] = this.autoAnalyze ? '1' : '0'
+    }
+
+    /** AI 消息复制入口，避免在终端焦点下按 Ctrl+C 被当作中断命令。 */
+    copyMessage (content: string, event?: Event): void {
+        event?.stopPropagation()
+        this.platform.setClipboard({ text: content })
+        this.notifications.info(this.translate.instant('Message copied'))
+    }
+
+    /** 选中 AI 消息后拦截 Ctrl/Cmd+C，防止事件继续传到后面的 SSH 终端。 */
+    @HostListener('document:keydown', ['$event'])
+    onDocumentKeydown (event: KeyboardEvent): void {
+        if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'c') { return }
+        const selected = window.getSelection()?.toString() ?? ''
+        if (!selected.trim()) { return }
+        this.platform.setClipboard({ text: selected })
+        event.preventDefault()
+        event.stopPropagation()
     }
 
     get hasSelection (): boolean {

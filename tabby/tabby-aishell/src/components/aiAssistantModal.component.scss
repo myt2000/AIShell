@@ -58,6 +58,21 @@
                 font-size: .85rem;
             }
 
+            .msg-toolbar {
+                display: flex;
+                justify-content: flex-end;
+                min-height: 1.2rem;
+            }
+
+            .msg-copy-btn {
+                padding: 0 .25rem;
+                opacity: .65;
+
+                &:hover {
+                    opacity: 1;
+                }
+            }
+
             &.user {
                 align-self: flex-end;
                 background: color-mix(in srgb, var(--theme-primary) 25%, var(--theme-bg));

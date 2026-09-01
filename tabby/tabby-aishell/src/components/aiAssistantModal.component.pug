@@ -30,6 +30,13 @@
                 .msg(*ngFor='let m of messages', [class.user]='m.role === "user"', [class.error]='m.error')
                     .role {{ m.role === 'user' ? 'You' : 'AI' }}
                     .content {{ m.content }}
+                    .msg-toolbar
+                        button.btn.btn-sm.btn-link.msg-copy-btn(
+                            type='button',
+                            title='"Copy message"|translate',
+                            (click)='copyMessage(m.content, $event)'
+                        )
+                            i.fas.fa-copy(aria-hidden='true')
                     .msg-actions(*ngIf='m.actions?.length')
                         button.btn.btn-sm.btn-primary.msg-action-btn(
                             *ngFor='let a of m.actions; let i = index',

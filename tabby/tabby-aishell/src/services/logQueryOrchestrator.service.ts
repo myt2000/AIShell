@@ -112,7 +112,7 @@ export class LogQueryOrchestrator {
             const first = initial[initial.length - 1].fields
             const deliveryType = first[3] ?? ''
             const next = first[9] ?? ''
-            if (deliveryType === '1' || next === '0') {
+            if (deliveryType === '1' || (deliveryType === '0' && next === '0')) {
                 this.lastInterpretation = 'rp-bi 判断为在线下发'
                 emit({ phase: 'parsing', module: entry, logType: 'rp-bi', message: '判断为在线下发，进入 im → cm → as。', output: firstOutput, interpretation: '在线下发', nextModule: 'im' })
                 await this.runStep(request, 'im', 'rp-message', emit)
@@ -385,7 +385,9 @@ export class LogQueryOrchestrator {
                 resolve(output.slice(0, idx).replace(/\r/g, ''))
             })
             // printf 只输出状态标记，不写文件；用于可靠判断命令何时结束。
-            tab.sendInput(`${command}; printf '\n${DONE_PREFIX}%s__%s\n' '${token}' "$?"` + String.fromCharCode(10))
+            // 双反斜杠确保传给远端 shell 的是 printf 转义序列，而不是实际换行。
+            // 实际换行会让单引号跨行，shell 进入 PS2(>) 续行，永远不会输出完成标记。
+            tab.sendInput(`${command}; printf '\\n${DONE_PREFIX}%s__%s\\n' '${token}' "$?"` + String.fromCharCode(10))
         })
     }
 
@@ -393,7 +395,8 @@ export class LogQueryOrchestrator {
         return output.split(/\r?\n/).map(line => {
             const start = line.search(/20\d{2}[-/]\d{2}[-/]\d{2}/)
             return start >= 0 ? line.slice(start) : line
-        }).filter(line => line.includes('|') && (!cid || line.includes(cid))).map(raw => ({ raw, fields: raw.split('|') }))
+        // 终端会回显输入命令，命令本身也可能含有 |、task_id 和 cid；只有真正以日志日期开头的行才进入字段解析。
+        }).filter(line => /^20\d{2}[-/]\d{2}[-/]\d{2}\s/.test(line) && line.includes('|') && (!cid || line.includes(cid))).map(raw => ({ raw, fields: raw.split('|') }))
     }
 
     // TODO(AISHELL): actionId 取第 7 个字段（split('|')[6]）为文档未注明的猜测位，需用真实 as/rp-message 日志核对一次

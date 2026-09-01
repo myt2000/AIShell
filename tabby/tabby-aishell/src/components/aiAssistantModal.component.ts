@@ -513,14 +513,38 @@ export class AiAssistantModalComponent extends BaseComponent {
             this.persistCurrent()
             this.scrollHistoryToBottom()
 
-            // 完成后自动回传给 AI 出最终结论（每步输出截断，总量受控）
+            // 完成后自动回传给 AI 出最终结论：先整理出结构化日志档案（每模块匹配
+            // 记录数 + 关键日志行），原始输出作附录用作核验，避免 AI 对着大段
+            // 原始流直接下结论
             if (result.status === 'finished') {
-                const keyOutputs = result.events
-                    .filter(e => e.phase === 'parsing' && e.output)
-                    .map(e => `--- ${e.module}/${e.logType} ---\n${(e.output ?? '').trim().slice(-1500)}`)
-                    .join('\n\n')
-                    .slice(0, 10000)
-                const conclusionPrompt = `[自动日志查询结果] 任务:${request.taskId} 设备:${request.cid}\n\n步骤摘要:\n${summary}\n\n关键原始输出:\n${keyOutputs || '(无)'}\n\n请根据以上结果给出最终结论：消息是否下发成功/送达，说明链路判断依据；若规则或字段无法判断，请明确指出需要人工核对什么。`
+                // 按模块聚合 parsing 事件：匹配的记录行（含日期开头的日志行）
+                const byModule = new Map<string, { logType: string, matchedLines: string[], rawTail: string }>()
+                for (const e of result.events) {
+                    if (e.phase !== 'parsing' || !e.output || !e.module) { continue }
+                    const key = `${e.module}/${e.logType}`
+                    const entry = byModule.get(key) ?? { logType: e.logType ?? '', matchedLines: [], rawTail: '' }
+                    for (const line of (e.output ?? '').split('\n')) {
+                        const t = line.trim()
+                        if (/^20\d{2}[-/]\d{2}[-/]\d{2}/.test(t) && t.includes('|')) {
+                            entry.matchedLines.push(t.slice(0, 400))
+                        }
+                    }
+                    entry.rawTail = (e.output ?? '').trim().slice(-800)
+                    byModule.set(key, entry)
+                }
+                const archiveLines: string[] = []
+                for (const [key, entry] of byModule) {
+                    if (!entry.matchedLines.length) { continue }
+                    archiveLines.push(`◆ ${key}（${entry.matchedLines.length} 条匹配）`)
+                    for (const line of entry.matchedLines.slice(0, 6)) {
+                        archiveLines.push(`  ${line}`)
+                    }
+                    if (entry.matchedLines.length > 6) {
+                        archiveLines.push(`  …另有 ${entry.matchedLines.length - 6} 条`)
+                    }
+                }
+                const archive = archiveLines.join('\n') || '(各模块均无日期格式的匹配日志行)'
+                const conclusionPrompt = `[自动日志查询结果] 任务:${request.taskId} 设备:${request.cid ?? '(全量)'}\n\n【步骤摘要】\n${summary}\n\n【已查到的日志档案（按模块，含匹配数与关键行）】\n${archive}\n\n请基于日志档案与步骤摘要给出最终结论，要求：\n1. 先用一句话回答消息是否下发成功/送达；\n2. 按链路顺序（模块 → 模块）列出每一步的判断依据（引用字段值/回执码及其含义）；\n3. 失败或存疑时指出具体原因与建议下一步；\n4. 若字段无法判断，明确说明需要人工核对什么。`
                 void this.submit(conclusionPrompt)
             }
         }

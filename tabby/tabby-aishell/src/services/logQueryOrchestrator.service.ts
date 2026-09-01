@@ -252,8 +252,22 @@ export class LogQueryOrchestrator {
             for (const r of results) {
                 if (r.error) {
                     emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `${r.profile.name ?? module} 执行失败（${r.error}）。` })
-                } else if (this.records(r.output, request.cid).length) {
-                    matchedOutputs.push(`===== ${r.profile.name ?? module} =====\n${r.output}`)
+                } else {
+                    const records = this.records(r.output, request.cid)
+                    // 每个窗口都回传独立输出；匹配结果另行汇总用于后续路由判断。
+                    emit({
+                        phase: 'parsing',
+                        module,
+                        logType,
+                        command: step.command,
+                        output: r.output,
+                        message: records.length
+                            ? `${r.profile.name ?? module} 已完成并匹配到 ${records.length} 条记录。`
+                            : `${r.profile.name ?? module} 已完成，但没有匹配记录。`,
+                    })
+                    if (records.length) {
+                        matchedOutputs.push(`===== ${r.profile.name ?? module} =====\n${r.output}`)
+                    }
                 }
             }
             if (matchedOutputs.length) {
@@ -342,18 +356,34 @@ export class LogQueryOrchestrator {
             if (exact) { return [exact] }
         }
         const openIds = new Set(this.terminalContext.getOpenTerminalTabs().map(t => (t as any).profile?.id))
-        return profiles
+        const matched = profiles
             .filter(p => p.type === 'ssh' && this.profileMatchesModule(p, module))
             .map(p => ({ p, open: openIds.has(p.id) ? 0 : 1, site: siteRank(p.group ? this.profilesService.resolveProfileGroupPath(p.group).join('/') : '') }))
             .sort((a, b) => (a.open - b.open) || (a.site - b.site))
             .map(x => x.p)
+        if (matched.length) { return matched }
+
+        // profile 名称/分组未包含模块名时，已打开的 SSH 窗口仍是可靠候选。
+        // 这解决了 sdp 等模块使用 IP/主机名命名、但用户已经手动打开窗口的场景。
+        const openProfiles = this.terminalContext.getOpenTerminalTabs()
+            .map(tab => (tab as any).profile as PartialProfile<Profile>|undefined)
+            .filter((p): p is PartialProfile<Profile> => !!p && (p.type === 'ssh' || !!(p.options as any)?.host))
+        const seen = new Set<string>()
+        return openProfiles.filter(profile => {
+            const key = profile.id ?? `${profile.name ?? ''}|${(profile.options as any)?.host ?? ''}`
+            if (seen.has(key)) { return false }
+            seen.add(key)
+            return true
+        })
     }
 
     private profileMatchesModule (profile: PartialProfile<Profile>, module: string): boolean {
         const group = profile.group ? this.profilesService.resolveProfileGroupPath(profile.group).join('/').toLowerCase() : ''
         const name = (profile.name ?? '').toLowerCase()
         const key = module.toLowerCase()
-        return group === key || group.endsWith('/' + key) || name === key || name.includes(key)
+        if (group === key || group.endsWith('/' + key) || name === key || name.includes(key)) { return true }
+        // AISHELL: 兼容"gsmd(sdp)"式括号命名——文件夹/名称以 (模块) 结尾或包含 /模块） 也算匹配
+        return group.endsWith(`(${key})`) || group.includes(`/${key})`) || name.endsWith(`(${key})`)
     }
 
     private findOpenTab (profile: PartialProfile<Profile>|null): ConnectableTerminalTabComponent<any>|null {

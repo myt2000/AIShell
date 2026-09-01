@@ -105,6 +105,18 @@ export function allowedLogTypesFor (module: string): Set<string> {
     return new Set([...READONLY_LOG_TYPES, ...extra])
 }
 
+/**
+ * AISHELL: 机房优先级（用户要求：杭州 → 北京马驹桥 → 无锡机房）。
+ * 候选服务器按分组路径命中的优先级排序，未列出的站点排最后（保持原有顺序）。
+ */
+export const SITE_PRIORITY: string[] = ['杭州', '北京马驹桥', '无锡机房']
+
+/** 分组路径的机房排序权重（越小越优先；未命中 = 尾部） */
+export function siteRank (groupPath: string): number {
+    const idx = SITE_PRIORITY.findIndex(site => groupPath.includes(site))
+    return idx >= 0 ? idx : SITE_PRIORITY.length
+}
+
 export function initialModuleForTask (taskId: string): string|null {
     const prefix = taskId.trim().split('_', 1)[0].toUpperCase()
     return INITIAL_MODULES[prefix] ?? null

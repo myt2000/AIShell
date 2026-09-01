@@ -71,6 +71,8 @@ for (const p of profiles) {
     if (!o.host || !o.user) { continue }
 
     const scripts = [
+        // 自动应答堡垒机"克隆上次会话"提示（答 n，由脚本自行 ssh 到目标机），无此提示时跳过
+        { expect: 'Clone last session', send: 'n', flexible: true },
         // flexible: 堡垒机"克隆上次会话"流程会跳过输目标机这步，后续密码步骤先触发时自动作废
         { expect: '$', send: `ssh log@${p.name}`, flexible: true },
         { expect: 'assword[:：]', isRegex: true, send: 'log*gexin' },

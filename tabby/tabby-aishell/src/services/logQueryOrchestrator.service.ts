@@ -13,6 +13,7 @@ import {
     dateFromTaskId,
     initialModuleForTask,
     normaliseDate,
+    siteRank,
 } from './logQueryRules'
 import { GTPR_CODES, describeActionIds, describeVendorCode } from './logQueryCodes'
 
@@ -224,22 +225,50 @@ export class LogQueryOrchestrator {
             }
         }
         this.lastInterpretation = null
-        emit({ phase: 'opening', module, logType, command: step.command, message: `准备打开 ${module} 服务器。` })
-        const tab = await this.getOrOpenTab(request, module)
-        emit({ phase: 'running', module, logType, command: step.command, message: `已连接 ${this.terminalContext.describeTarget(tab)}，执行查询。` })
-        const output = await this.executeCommand(tab, step.command)
-        emit({ phase: 'parsing', module, logType, command: step.command, output, message: `已收到 ${module}/${logType} 查询结果。` })
-        return output
+
+        // AISHELL: 多机房候选回退——按 杭州→北京→无锡 优先级逐台尝试，无匹配记录自动切换下一台
+        const candidates = await this.findProfiles(request, module)
+        if (!candidates.length) {
+            throw new Error(`没有找到 ${module} 对应的 SSH 服务器配置，请提供 server 或先配置该模块服务器。`)
+        }
+        let lastOutput = ''
+        for (let i = 0; i < candidates.length; i++) {
+            const profile = candidates[i]
+            emit({ phase: 'opening', module, logType, command: step.command, message: `连接 ${profile.name ?? module}（候选 ${i + 1}/${candidates.length}）。` })
+            const tab = await this.getOrOpenTab(profile, profile.name ?? module)
+            emit({ phase: 'running', module, logType, command: step.command, message: `已连接 ${this.terminalContext.describeTarget(tab)}，执行查询。` })
+            try {
+                lastOutput = await this.executeCommand(tab, step.command)
+            } catch (e: any) {
+                if (i < candidates.length - 1) {
+                    emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `${profile.name ?? module} 执行失败（${e?.message ?? e}），切换下一候选。` })
+                    continue
+                }
+                throw e
+            }
+            const matched = this.records(lastOutput, request.cid).length
+            if (matched > 0 || i === candidates.length - 1) {
+                if (i > 0 && matched === 0) {
+                    emit({ phase: 'parsing', module, logType, command: step.command, output: lastOutput, message: `已在全部 ${candidates.length} 个候选服务器查询 ${module}/${logType}，均无匹配记录。` })
+                } else {
+                    emit({ phase: 'parsing', module, logType, command: step.command, output: lastOutput, message: `已收到 ${module}/${logType} 查询结果。` })
+                }
+                return lastOutput
+            }
+            emit({ phase: 'parsing', module, logType, command: step.command, output: lastOutput, message: `${profile.name ?? module} 无匹配记录，切换下一机房候选。` })
+        }
+        return lastOutput
     }
 
     /** AISHELL: 启动确认用的计划预览（起始模块/服务器/首条命令） */
     async previewFirstStep (request: LogQueryRequest): Promise<{ module: string, server: string, command: string }|null> {
         const entry = initialModuleForTask(request.taskId)
         if (!entry) { return null }
-        const profile = await this.findProfile(request, entry)
+        const candidates = await this.findProfiles(request, entry)
+        const profile = candidates[0]
         return {
             module: entry,
-            server: profile?.name ?? '(未找到匹配服务器)',
+            server: profile ? `${profile.name}（无匹配自动切换下一机房，共 ${candidates.length} 个候选）` : '(未找到匹配服务器)',
             command: this.buildCommand({ ...request, date: normaliseDate(request.date) ?? dateFromTaskId(request.taskId) }, entry, 'rp-bi'),
         }
     }
@@ -257,26 +286,25 @@ export class LogQueryOrchestrator {
         return `zgrep -H -F -- ${task} "${rule.path}/${logType}-${datePart}"* | grep -F -- ${cid}`
     }
 
-    private async getOrOpenTab (request: LogQueryRequest, module: string): Promise<BaseTerminalTabComponent<any>> {
-        const profile = await this.findProfile(request, module)
+    private async getOrOpenTab (profile: PartialProfile<Profile>|null, name: string): Promise<BaseTerminalTabComponent<any>> {
         // 复用已打开的窗口（含连接中的，等待其就绪，避免重复开标签）
         const existing = this.findOpenTab(profile)
         if (existing) {
-            await this.waitForTabReady(existing, profile?.name ?? module)
+            await this.waitForTabReady(existing, name)
             if (existing.session?.open) { return existing }
         }
-        if (!profile) { throw new Error(`没有找到 ${module} 对应的 SSH 服务器配置，请提供 server 或先配置该模块服务器。`) }
+        if (!profile) { throw new Error(`没有找到 ${name} 对应的 SSH 服务器配置。`) }
         await this.profilesService.launchProfile(profile)
         const deadline = Date.now() + DEFAULT_TIMEOUT_MS
         while (Date.now() < deadline) {
             const found = this.findOpenTab(profile)
             if (found) {
-                await this.waitForTabReady(found, profile.name ?? module)
+                await this.waitForTabReady(found, name)
                 if (found.session?.open) { return found }
             }
             await sleep(250)
         }
-        throw new Error(`${module} SSH 服务器连接超时：${profile.name ?? module}`)
+        throw new Error(`${name} SSH 服务器连接超时：${name}`)
     }
 
     /** 等待会话 open + 登录脚本执行完毕（session.open 只是堡垒机认证完成，脚本还在敲 ssh/密码/cd） */
@@ -299,17 +327,19 @@ export class LogQueryOrchestrator {
         }
     }
 
-    private async findProfile (request: LogQueryRequest, module: string): Promise<PartialProfile<Profile>|null> {
+    /** 模块的全部候选服务器，按 用户指定 > 已打开窗口 > 机房优先级(杭州→北京→无锡) 排序 */
+    private async findProfiles (request: LogQueryRequest, module: string): Promise<PartialProfile<Profile>[]> {
         const profiles = await this.profilesService.getProfiles({ includeBuiltin: false, clone: false })
         if (request.server) {
             const exact = profiles.find(p => p.name === request.server || (p.options as any)?.host === request.server)
-            if (exact) { return exact }
+            if (exact) { return [exact] }
         }
-        const candidates = profiles.filter(p => p.type === 'ssh' && this.profileMatchesModule(p, module))
-        if (!candidates.length) { return null }
-        // 优先复用已打开窗口对应的服务器（避免查错站点）
         const openIds = new Set(this.terminalContext.getOpenTerminalTabs().map(t => (t as any).profile?.id))
-        return candidates.find(p => openIds.has(p.id)) ?? candidates[0]
+        return profiles
+            .filter(p => p.type === 'ssh' && this.profileMatchesModule(p, module))
+            .map(p => ({ p, open: openIds.has(p.id) ? 0 : 1, site: siteRank(p.group ? this.profilesService.resolveProfileGroupPath(p.group).join('/') : '') }))
+            .sort((a, b) => (a.open - b.open) || (a.site - b.site))
+            .map(x => x.p)
     }
 
     private profileMatchesModule (profile: PartialProfile<Profile>, module: string): boolean {

@@ -8,12 +8,13 @@ import {
     LOG_MODULES,
     LogQueryRequest,
     LogQueryStep,
-    READONLY_LOG_TYPES,
     VENDOR_SUCCESS_MODULES,
+    allowedLogTypesFor,
     dateFromTaskId,
     initialModuleForTask,
     normaliseDate,
 } from './logQueryRules'
+import { GTPR_CODES, describeActionIds, describeVendorCode } from './logQueryCodes'
 
 export interface LogQueryEvent {
     queryId: string
@@ -182,7 +183,7 @@ export class LogQueryOrchestrator {
             return { queryId, status: 'finished', events, conclusion }
         }
         const pushResult = await this.runStep(request, vendorModule, 'push-result', emit)
-        const conclusion = `未发现 ${vendorModule}/rp-bi，已改查 push-result。${this.interpretPushResult(pushResult)}`
+        const conclusion = `未发现 ${vendorModule}/rp-bi，已改查 push-result。${this.interpretPushResult(pushResult, vendorModule)}`
         emit({ phase: 'finished', module: vendorModule, logType: 'push-result', message: conclusion, output: pushResult, interpretation: conclusion })
         return { queryId, status: 'finished', events, conclusion }
     }
@@ -242,7 +243,7 @@ export class LogQueryOrchestrator {
 
     private buildCommand (request: LogQueryRequest, module: string, logType: string): string {
         const rule = LOG_MODULES[module]
-        if (!rule || !READONLY_LOG_TYPES.has(logType)) { throw new Error(`未配置日志模块或日志类型：${module}/${logType}`) }
+        if (!rule || !allowedLogTypesFor(module).has(logType)) { throw new Error(`未配置日志模块或日志类型：${module}/${logType}`) }
         const datePart = request.date ? `${request.date}-` : ''
         const task = this.shellQuote(request.taskId)
         const cid = this.shellQuote(request.cid)
@@ -353,19 +354,27 @@ export class LogQueryOrchestrator {
     private interpretAs (output: string): string {
         const records = output.split(/\r?\n/).filter(line => line.includes('|'))
         const actionIds = records.map(line => line.split('|')[6] ?? '').filter(Boolean)
-        return actionIds.length ? `as 回执 actionId：${[...new Set(actionIds)].join(', ')}` : 'as 已有日志但无法定位 actionId 字段（字段位未核对），请人工查看原始输出。'
+        return actionIds.length ? `as 回执 actionId：${describeActionIds(actionIds)}` : 'as 已有日志但无法定位 actionId 字段（字段位未核对），请人工查看原始输出。'
     }
 
     // TODO(AISHELL): gtpr 字段位同样未与真实日志核对
     private interpretGtpr (output: string): string {
         const ids = output.split(/\r?\n/).map(line => line.split('|')[6] ?? '').filter(Boolean)
-        return ids.length ? `厂商回执 actionId：${[...new Set(ids)].join(', ')}` : 'gtpr 已有日志但无法定位回执字段（字段位未核对），请人工查看原始输出。'
+        const actionSummary = ids.length ? `厂商回执 actionId：${describeActionIds(ids)}` : 'gtpr 已有日志但无法定位回执字段（字段位未核对），请人工查看原始输出。'
+        const codes = output.split(/\r?\n/).map(line => line.split('|')[5] ?? '').filter(Boolean)
+        const codeParts = [...new Set(codes)].map(code => GTPR_CODES[code.trim()] ? `${code}(${GTPR_CODES[code.trim()]})` : null).filter(Boolean)
+        return codeParts.length ? `${actionSummary}；gtpr code：${codeParts.join('、')}` : actionSummary
     }
 
     // TODO(AISHELL): push-result code 取第 10 个字段为猜测位，需用真实日志核对
-    private interpretPushResult (output: string): string {
+    private interpretPushResult (output: string, module?: string): string {
         const codes = output.split(/\r?\n/).map(line => line.split('|')[9] ?? '').filter(Boolean)
-        return codes.length ? `厂商请求 code：${[...new Set(codes)].join(', ')}` : 'push-result 已有日志但无法定位 code 字段（字段位未核对），请人工查看原始输出。'
+        if (!codes.length) { return 'push-result 已有日志但无法定位 code 字段（字段位未核对），请人工查看原始输出。' }
+        const parts = [...new Set(codes)].map(code => {
+            const desc = module ? describeVendorCode(module, code) : null
+            return desc ? `${code}(${desc})` : code
+        })
+        return `厂商请求 code：${parts.join('、')}`
     }
 
     private shellQuote (value: string): string {

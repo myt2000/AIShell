@@ -73,7 +73,31 @@ export const READONLY_LOG_TYPES = new Set([
     'push-result',
     'rp-logout',
     'gexin-bi-display',
+    // AISHELL: 按日志排查流程文档补充的各模块主查类型
+    'rp-broadcasting',
+    'rp-login',
 ])
+
+/**
+ * AISHELL: 各模块主要查询的日志类型（docs/日志排查流程文档.md）。
+ * 未列出的模块使用通用白名单 READONLY_LOG_TYPES。
+ */
+export const MODULE_LOG_TYPES: Record<string, string[]> = {
+    'gtps-hw': ['rp-bi', 'rp-message', 'push-result', 'rp-broadcasting'],
+    'gtps-ho': ['rp-bi', 'rp-message', 'push-result', 'rp-broadcasting'],
+    'hps-hoshw': ['rp-bi', 'rp-message', 'push-result', 'rp-broadcasting'],
+    'gtps-op': ['rp-bi', 'rp-message', 'push-result', 'rp-broadcasting', 'rp-login'],
+    'gtps-vv': ['rp-bi', 'rp-message', 'push-result', 'rp-login'],
+    'gtps-xm': ['rp-bi', 'rp-message', 'push-result'],
+    'gtps-mz': ['rp-bi', 'rp-message', 'push-result'],
+    gtpr: ['rp-bi'],
+}
+
+/** 模块允许查询的日志类型集合（模块表 ∪ 通用白名单） */
+export function allowedLogTypesFor (module: string): Set<string> {
+    const extra = MODULE_LOG_TYPES[module] ?? []
+    return new Set([...READONLY_LOG_TYPES, ...extra])
+}
 
 export function initialModuleForTask (taskId: string): string|null {
     const prefix = taskId.trim().split('_', 1)[0].toUpperCase()

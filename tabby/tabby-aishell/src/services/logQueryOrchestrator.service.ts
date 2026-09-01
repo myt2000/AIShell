@@ -371,25 +371,46 @@ export class LogQueryOrchestrator {
         const marker = `${DONE_PREFIX}${token}__`
         let output = ''
         let sub: Subscription|null = null
-        // AISHELL: 输出流中监听完成标记；超时不视为失败——按排查文档 §10.2
-        // 返回已收到的部分输出（大日志扫描常见），由调用方按记录匹配决定是否采信
-        return new Promise((resolve) => {
-            const timer = setTimeout(() => {
+        let closedSub: Subscription|null = null
+        let settled = false
+        return new Promise((resolve, reject) => {
+            const cleanup = () => {
                 sub?.unsubscribe()
-                resolve(output.replace(/\r/g, ''))
-            }, DEFAULT_TIMEOUT_MS)
-            sub = tab.binaryOutput$.subscribe(data => {
-                output += data.toString('utf8')
-                const idx = output.indexOf(marker)
-                if (idx < 0) { return }
-                clearTimeout(timer)
-                sub?.unsubscribe()
-                resolve(output.slice(0, idx).replace(/\r/g, ''))
+                closedSub?.unsubscribe()
+            }
+            const finish = (error?: Error) => {
+                if (settled) { return }
+                settled = true
+                cleanup()
+                if (error) {
+                    reject(error)
+                } else {
+                    const idx = output.indexOf(marker)
+                    resolve((idx >= 0 ? output.slice(0, idx) : output).replace(/\r/g, ''))
+                }
+            }
+            // 日志命令不设置固定执行时限：大批量 zgrep 可能运行数分钟，
+            // 只要 SSH 会话存活就持续监听，直到远端完成标记出现。
+            sub = tab.binaryOutput$.subscribe({
+                next: data => {
+                    output += data.toString('utf8')
+                    if (output.indexOf(marker) >= 0) { finish() }
+                },
+                error: error => finish(error instanceof Error ? error : new Error(String(error))),
+                complete: () => finish(new Error('SSH 输出流已关闭，命令未完成。')),
             })
+            const closed$ = (tab.session as any)?.closed$
+            if (closed$?.subscribe) {
+                closedSub = closed$.subscribe(() => finish(new Error('SSH 会话已关闭，命令未完成。')))
+            }
             // printf 只输出状态标记，不写文件；用于可靠判断命令何时结束。
             // 双反斜杠确保传给远端 shell 的是 printf 转义序列，而不是实际换行。
             // 实际换行会让单引号跨行，shell 进入 PS2(>) 续行，永远不会输出完成标记。
-            tab.sendInput(`${command}; printf '\\n${DONE_PREFIX}%s__%s\\n' '${token}' "$?"` + String.fromCharCode(10))
+            try {
+                tab.sendInput(`${command}; printf '\\n${DONE_PREFIX}%s__%s\\n' '${token}' "$?"` + String.fromCharCode(10))
+            } catch (error: any) {
+                finish(error instanceof Error ? error : new Error(String(error)))
+            }
         })
     }
 

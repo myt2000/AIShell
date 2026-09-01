@@ -193,12 +193,25 @@ export class AiAssistantModalComponent extends BaseComponent {
         this.notifications.info(this.translate.instant('Message copied'))
     }
 
-    /** 选中 AI 消息后拦截 Ctrl/Cmd+C，防止事件继续传到后面的 SSH 终端。 */
+    /** AISHELL: 选中 AI 弹窗内部文本后拦截 Ctrl/Cmd+C——只作用于弹窗容器内的选区，
+     * 不吞其他区域（服务器树/设置页）的复制。弹窗内容挂在 ngbModal 的 .modal-content
+     * 下，沿选区锚点向上找 .ai-assistant-modal 判定是否在弹窗内。 */
     @HostListener('document:keydown', ['$event'])
     onDocumentKeydown (event: KeyboardEvent): void {
         if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'c') { return }
-        const selected = window.getSelection()?.toString() ?? ''
-        if (!selected.trim()) { return }
+        const selection = window.getSelection()
+        const selected = selection?.toString() ?? ''
+        if (!selected.trim() || !selection?.anchorNode) { return }
+        let node: Node|null = selection.anchorNode
+        let insideModal = false
+        while (node) {
+            if (node instanceof Element && node.classList.contains('ai-assistant-modal')) {
+                insideModal = true
+                break
+            }
+            node = node.parentNode
+        }
+        if (!insideModal) { return }
         this.platform.setClipboard({ text: selected })
         event.preventDefault()
         event.stopPropagation()

@@ -371,10 +371,12 @@ export class LogQueryOrchestrator {
         const marker = `${DONE_PREFIX}${token}__`
         let output = ''
         let sub: Subscription|null = null
-        return new Promise((resolve, reject) => {
+        // AISHELL: 输出流中监听完成标记；超时不视为失败——按排查文档 §10.2
+        // 返回已收到的部分输出（大日志扫描常见），由调用方按记录匹配决定是否采信
+        return new Promise((resolve) => {
             const timer = setTimeout(() => {
                 sub?.unsubscribe()
-                reject(new Error(`命令执行超时：${command}`))
+                resolve(output.replace(/\r/g, ''))
             }, DEFAULT_TIMEOUT_MS)
             sub = tab.binaryOutput$.subscribe(data => {
                 output += data.toString('utf8')

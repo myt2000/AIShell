@@ -44,6 +44,8 @@ interface ParsedRecord {
 const DONE_PREFIX = '__AISHELL_QUERY_DONE_'
 const DEFAULT_TIMEOUT_MS = 35_000
 const LOGIN_SCRIPTS_TIMEOUT_MS = 40_000
+/** AISHELL: 每批并行查询的服务器数量 */
+const QUERY_CONCURRENCY = 5
 
 /**
  * AISHELL: 规则驱动的 SSH 日志查询执行器。
@@ -226,38 +228,43 @@ export class LogQueryOrchestrator {
         }
         this.lastInterpretation = null
 
-        // AISHELL: 多机房候选回退——按 杭州→北京→无锡 优先级逐台尝试，无匹配记录自动切换下一台
+        // AISHELL: 并行批量查询——候选按 用户指定 > 已打开窗口 > 机房优先级(杭州→北京→无锡) 排序，
+        // 每批 QUERY_CONCURRENCY 台同时开窗同时执行（错峰 600ms 保护堡垒机），首批有匹配即采用
         const candidates = await this.findProfiles(request, module)
         if (!candidates.length) {
             throw new Error(`没有找到 ${module} 对应的 SSH 服务器配置，请提供 server 或先配置该模块服务器。`)
         }
-        let lastOutput = ''
-        for (let i = 0; i < candidates.length; i++) {
-            const profile = candidates[i]
-            emit({ phase: 'opening', module, logType, command: step.command, message: `连接 ${profile.name ?? module}（候选 ${i + 1}/${candidates.length}）。` })
-            const tab = await this.getOrOpenTab(profile, profile.name ?? module)
-            emit({ phase: 'running', module, logType, command: step.command, message: `已连接 ${this.terminalContext.describeTarget(tab)}，执行查询。` })
-            try {
-                lastOutput = await this.executeCommand(tab, step.command)
-            } catch (e: any) {
-                if (i < candidates.length - 1) {
-                    emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `${profile.name ?? module} 执行失败（${e?.message ?? e}），切换下一候选。` })
-                    continue
+        const batchCount = Math.ceil(candidates.length / QUERY_CONCURRENCY)
+        const matchedOutputs: string[] = []
+        for (let batch = 0; batch < batchCount; batch++) {
+            const slice = candidates.slice(batch * QUERY_CONCURRENCY, (batch + 1) * QUERY_CONCURRENCY)
+            emit({ phase: 'opening', module, logType, command: step.command, message: `并行连接 ${slice.length} 台 ${module} 候选（第 ${batch + 1}/${batchCount} 批，共 ${candidates.length} 台）。` })
+            const results = await Promise.all(slice.map(async (profile, index) => {
+                try {
+                    await sleep(index * 600)
+                    const tab = await this.getOrOpenTab(profile, profile.name ?? module)
+                    const output = await this.executeCommand(tab, step.command)
+                    return { profile, output, error: null as string|null }
+                } catch (e: any) {
+                    return { profile, output: '', error: e?.message ?? String(e) }
                 }
-                throw e
-            }
-            const matched = this.records(lastOutput, request.cid).length
-            if (matched > 0 || i === candidates.length - 1) {
-                if (i > 0 && matched === 0) {
-                    emit({ phase: 'parsing', module, logType, command: step.command, output: lastOutput, message: `已在全部 ${candidates.length} 个候选服务器查询 ${module}/${logType}，均无匹配记录。` })
-                } else {
-                    emit({ phase: 'parsing', module, logType, command: step.command, output: lastOutput, message: `已收到 ${module}/${logType} 查询结果。` })
+            }))
+            for (const r of results) {
+                if (r.error) {
+                    emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `${r.profile.name ?? module} 执行失败（${r.error}）。` })
+                } else if (this.records(r.output, request.cid).length) {
+                    matchedOutputs.push(`===== ${r.profile.name ?? module} =====\n${r.output}`)
                 }
-                return lastOutput
             }
-            emit({ phase: 'parsing', module, logType, command: step.command, output: lastOutput, message: `${profile.name ?? module} 无匹配记录，切换下一机房候选。` })
+            if (matchedOutputs.length) {
+                const merged = matchedOutputs.join('\n')
+                emit({ phase: 'parsing', module, logType, command: step.command, output: merged, message: `已在 ${matchedOutputs.length} 台服务器匹配到 ${module}/${logType} 记录。` })
+                return merged
+            }
+            emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `第 ${batch + 1} 批 ${slice.length} 台均无匹配记录。` })
         }
-        return lastOutput
+        emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `全部 ${candidates.length} 台候选均无 ${module}/${logType} 匹配记录。` })
+        return ''
     }
 
     /** AISHELL: 启动确认用的计划预览（起始模块/服务器/首条命令） */
@@ -359,6 +366,8 @@ export class LogQueryOrchestrator {
 
     private executeCommand (tab: BaseTerminalTabComponent<any>, command: string): Promise<string> {
         const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+        // AISHELL: 标记必须拆开构造——若命令行内含完整标记字符串，终端回显输入行时
+        // 会提前出现标记，导致命令未执行完就误判结束（实测翻车点）。
         const marker = `${DONE_PREFIX}${token}__`
         let output = ''
         let sub: Subscription|null = null
@@ -376,7 +385,7 @@ export class LogQueryOrchestrator {
                 resolve(output.slice(0, idx).replace(/\r/g, ''))
             })
             // printf 只输出状态标记，不写文件；用于可靠判断命令何时结束。
-            tab.sendInput(`${command}; printf '\\n${marker}%s\\n' "$?"\n`)
+            tab.sendInput(`${command}; printf '\n${DONE_PREFIX}%s__%s\n' '${token}' "$?"` + String.fromCharCode(10))
         })
     }
 

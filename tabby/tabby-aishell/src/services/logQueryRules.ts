@@ -10,7 +10,8 @@ export interface LogModuleRule {
 
 export interface LogQueryRequest {
     taskId: string
-    cid: string
+    /** 可选：提供则精确到设备；不提供按 task_id 全量匹配 */
+    cid?: string
     appId?: string
     date?: string
     server?: string
@@ -111,8 +112,11 @@ export function initialModuleForTask (taskId: string): string|null {
 
 export function normaliseDate (value: string|undefined): string|undefined {
     if (!value) { return undefined }
-    const compact = value.replace(/-/g, '')
-    return /^20\d{6}$/.test(compact) ? compact : undefined
+    const parts = value.split(/[-/.]/).map(x => parseInt(x, 10))
+    if (parts.length !== 3 || parts.some(n => isNaN(n))) { return undefined }
+    const [y, m, d] = parts
+    if (y < 2000 || y > 2099 || m < 1 || m > 12 || d < 1 || d > 31) { return undefined }
+    return `${y}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}`
 }
 
 /** 从常见 task_id 的 MMDD 段推断日志日期；年份仍需由用户或当前日期提供。 */

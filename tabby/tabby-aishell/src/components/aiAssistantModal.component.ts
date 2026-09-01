@@ -84,7 +84,8 @@ export class AiAssistantModalComponent extends BaseComponent {
         '打开某文件夹下全部服务器：<<ACTION>>{"type":"open_group","group":"文件夹名或路径"}<<END>>\n' +
         '连接某台服务器：<<ACTION>>{"type":"open_profile","name":"服务器名"}<<END>>\n' +
         '在终端窗口执行命令：<<ACTION>>{"type":"run","command":"命令","targets":"current或all"}<<END>>\n' +
-        '自动查询推送日志：<<ACTION>>{"type":"log_query","task_id":"任务ID","cid":"设备CID","mode":"auto"}<<END>>\n' +
+        '自动查询推送日志：<<ACTION>>{"type":"log_query","task_id":"任务ID","cid":"设备CID(可选，用户给了才填)","mode":"auto"}<<END>>\n' +
+'task_id 为必需参数（cid 可选：提供则精确到设备，不提供则按 task_id 全量匹配该任务的所有记录）。缺少 task_id 时才提示用户提供（建议同时给 cid/appid/推送时间/手机号），不要猜示例值。' +
         '涉及 task_id/cid 的消息下发查询时，优先只输出 log_query 动作，不要自行拼接多条 run 命令。log_query 会自动打开对应模块服务器、执行只读查询、解析结果并继续下一模块。动作标记之外不要输出其他 JSON。\n\n' +
         '【各厂商模块主查日志类型】华为(gtps-hw)/荣耀(gtps-ho)/鸿蒙(hps-hoshw)：rp-bi、rp-message、push-result、rp-broadcasting；OPPO(gtps-op)另含 rp-login；vivo(gtps-vv)：rp-bi、rp-message、push-result、rp-login；小米(gtps-xm)/魅族(gtps-mz)：rp-bi、rp-message、push-result；gtpr 主查 rp-bi；as 主查 rp-message；gpmrs 主查 gexin-bi-display；apn/apns 主查 rp-bi、rp-logout。\n' +
         receiptCheatSheet()
@@ -379,8 +380,8 @@ export class AiAssistantModalComponent extends BaseComponent {
         if (action.type === 'log_query') {
             const taskId = action.task_id ?? ''
             const cid = action.cid ?? ''
-            if (!taskId || !cid) {
-                this.notifications.error(this.translate.instant('Automatic log query requires task_id and cid'))
+            if (!taskId) {
+                this.notifications.error(this.translate.instant('Automatic log query requires task_id'))
                 return
             }
             const request: LogQueryRequest = {
@@ -401,7 +402,11 @@ export class AiAssistantModalComponent extends BaseComponent {
                 type: 'warning',
                 message: this.translate.instant('Start automatic log query?'),
                 detail: this.translate.instant('Task: {taskId}\nDevice: {cid}\nEntry module: {module}\nServer: {server}\nFirst command:\n{command}', {
-                    taskId, cid, module: preview.module, server: preview.server, command: preview.command,
+                    taskId,
+                    cid: cid || this.translate.instant('(not provided — will match all records for this task)'),
+                    module: preview.module,
+                    server: preview.server,
+                    command: preview.command,
                 }),
                 buttons: [
                     this.translate.instant('Start'),

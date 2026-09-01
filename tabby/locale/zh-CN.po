@@ -3304,3 +3304,11 @@ msgstr "自动日志查询失败"
 #: tabby-aishell/src/components/aiAssistantModal.component.ts
 msgid "Automatic log query: {taskId}"
 msgstr "自动日志查询：{taskId}"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "Automatic log query requires task_id"
+msgstr "自动日志查询缺少 task_id（cid 可选，不提供则按任务号全量匹配）"
+
+#: tabby-aishell/src/components/aiAssistantModal.component.ts
+msgid "(not provided — will match all records for this task)"
+msgstr "（未提供——将按任务号全量匹配该任务的所有记录）"

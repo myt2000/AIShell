@@ -63,14 +63,17 @@ export class LogQueryOrchestrator {
         return this.events.asObservable()
     }
 
-    /** 从自然语言中提取明确的 task_id/cid；提取不到则返回 null，不猜示例值。 */
+    /** 从自然语言中提取 task_id（必需，关键词或裸形态）与 cid（可选）；提取不到 task_id 返回 null，不猜示例值。 */
     static parseRequest (text: string): LogQueryRequest|null {
-        const task = /(?:task[_ -]?id|任务(?:id|号))\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)
-        const cid = /(?:cid|设备(?:id|标识))\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)
-        if (!task?.[1] || !cid?.[1]) { return null }
-        const date = /(?:日期|date|日志日)\s*[:=：]?\s*(20\d{2}[-/]?\d{2}[-/]?\d{2})/i.exec(text)?.[1]
+        // 关键词形式（task_id=xxx / 任务id: xxx）优先；其次识别裸任务号形态（RASS_0901_xxx 等）
+        const keywordTask = /(?:task[_ -]?id|任务(?:id|号))\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1]
+        const shapeTask = /(?:^|[^A-Za-z0-9_-])((?:RASA|RASL|RASS|OSL|OSS|GT|MM)_\d{4}_[A-Za-z0-9_-]+)(?:$|[^A-Za-z0-9_-])/i.exec(text)?.[1]
+        const taskId = keywordTask ?? shapeTask
+        if (!taskId) { return null }
+        const cid = /(?:cid|设备(?:id|标识))\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1]
+        const date = /(?:日期|date|日志日|时间点|时间|推送时间)\s*[:=：]?\s*(20\d{2}[-/.]?\d{1,2}[-/.]?\d{1,2})/i.exec(text)?.[1]
         const appId = /(?:appid|app[_ -]?id)\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1]
-        return { taskId: task[1], cid: cid[1], date: normaliseDate(date), appId, mode: 'auto' }
+        return { taskId, cid, date: normaliseDate(date), appId, mode: 'auto' }
     }
 
     /** 确认模式：每个模块执行前的确认钩子（返回 false 表示用户跳过，暂停查询） */
@@ -246,6 +249,10 @@ export class LogQueryOrchestrator {
         if (!rule || !allowedLogTypesFor(module).has(logType)) { throw new Error(`未配置日志模块或日志类型：${module}/${logType}`) }
         const datePart = request.date ? `${request.date}-` : ''
         const task = this.shellQuote(request.taskId)
+        if (!request.cid) {
+            // 无 cid：按 task_id 全量匹配（排查文档 §6.2 只按任务号查询模板）
+            return `zgrep -H -F -- ${task} "${rule.path}/${logType}-${datePart}"*`
+        }
         const cid = this.shellQuote(request.cid)
         return `zgrep -H -F -- ${task} "${rule.path}/${logType}-${datePart}"* | grep -F -- ${cid}`
     }
@@ -343,11 +350,11 @@ export class LogQueryOrchestrator {
         })
     }
 
-    private records (output: string, cid: string): ParsedRecord[] {
+    private records (output: string, cid?: string): ParsedRecord[] {
         return output.split(/\r?\n/).map(line => {
             const start = line.search(/20\d{2}[-/]\d{2}[-/]\d{2}/)
             return start >= 0 ? line.slice(start) : line
-        }).filter(line => line.includes('|') && line.includes(cid)).map(raw => ({ raw, fields: raw.split('|') }))
+        }).filter(line => line.includes('|') && (!cid || line.includes(cid))).map(raw => ({ raw, fields: raw.split('|') }))
     }
 
     // TODO(AISHELL): actionId 取第 7 个字段（split('|')[6]）为文档未注明的猜测位，需用真实 as/rp-message 日志核对一次

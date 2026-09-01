@@ -167,7 +167,7 @@ export class LogQueryOrchestrator {
                 emit({ phase: 'finished', module: 'apn', logType: 'rp-bi', message: conclusion, output: `${apn}\n${apns}`, interpretation: conclusion })
                 return { queryId, status: 'finished', events, conclusion }
             }
-            // TODO(AISHELL): gpmrs 展示回执的日志类型 gexin-bi-display 为猜测值，需用真实文件名核对
+            // AISHELL: gpmrs 展示回执日志类型 gexin-bi-display（用户实测确认）
             await this.runStep(request, 'gpmrs', 'gexin-bi-display', emit)
             const asOutput = await this.runStep(request, 'as', 'rp-message', emit)
             const conclusion = this.interpretAs(asOutput)

@@ -90,6 +90,11 @@ export const MODULE_LOG_TYPES: Record<string, string[]> = {
     'gtps-vv': ['rp-bi', 'rp-message', 'push-result', 'rp-login'],
     'gtps-xm': ['rp-bi', 'rp-message', 'push-result'],
     'gtps-mz': ['rp-bi', 'rp-message', 'push-result'],
+    // AISHELL: 用户实测确认（2026-09-01）
+    as: ['rp-message'],
+    gpmrs: ['gexin-bi-display'],
+    apn: ['rp-bi', 'rp-logout'],
+    apns: ['rp-bi', 'rp-logout'],
     gtpr: ['rp-bi'],
 }
 

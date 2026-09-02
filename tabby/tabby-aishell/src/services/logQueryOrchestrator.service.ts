@@ -27,6 +27,8 @@ export interface LogQueryEvent {
     message: string
     interpretation?: string
     nextModule?: string
+    /** 产生本次输出的独立 SSH 服务器，便于按服务器核对/下载日志。 */
+    server?: string
 }
 
 export interface LogQueryResult {
@@ -44,8 +46,7 @@ interface ParsedRecord {
 const DONE_PREFIX = '__AISHELL_QUERY_DONE_'
 const DEFAULT_TIMEOUT_MS = 35_000
 const LOGIN_SCRIPTS_TIMEOUT_MS = 40_000
-/** AISHELL: 每批并行查询的服务器数量 */
-const QUERY_CONCURRENCY = 5
+const ACTIVE_SITE_NAMES = ['杭州三墩', '北京马驹桥', '无锡国际']
 
 /**
  * AISHELL: 规则驱动的 SSH 日志查询执行器。
@@ -101,6 +102,19 @@ export class LogQueryOrchestrator {
         }
 
         try {
+            // 推送公共入口：先查 rasv2/rp-message，再进入 task_id 对应的 psc/spd/os/mmp。
+            // 若当前树中尚未同步 rasv2 配置，保留兼容行为并直接查询具体模块。
+            if (['psc', 'spd', 'os', 'mmp'].includes(entry)) {
+                const rasv2Profiles = await this.findProfiles(request, 'rasv2')
+                if (rasv2Profiles.length) {
+                    const rasv2Output = await this.runStep(request, 'rasv2', 'rp-message', emit)
+                    emit({
+                        phase: 'parsing', module: 'rasv2', logType: 'rp-message', output: rasv2Output,
+                        message: rasv2Output ? '已完成 rasv2 入口查询，继续检查具体下发模块。' : 'rasv2 未匹配到记录，继续检查具体下发模块。',
+                        interpretation: 'rasv2 入口',
+                    })
+                }
+            }
             const firstOutput = await this.runStep(request, entry, 'rp-bi', emit)
             const initial = this.records(firstOutput, request.cid)
             if (!initial.length) {
@@ -228,54 +242,44 @@ export class LogQueryOrchestrator {
         }
         this.lastInterpretation = null
 
-        // AISHELL: 并行批量查询——候选按 用户指定 > 已打开窗口 > 机房优先级(杭州→北京→无锡) 排序，
-        // 每批 QUERY_CONCURRENCY 台同时开窗同时执行（错峰 600ms 保护堡垒机），首批有匹配即采用
+        // AISHELL: 候选按 用户指定 > 已打开窗口 > 机房优先级(杭州→北京→无锡) 排序。
+        // 不再固定分批/限制 5 个窗口：所有候选服务器都会打开并独立监听；仅通过错峰发送
+        // 控制堡垒机压力。任一窗口完成后立即回传，匹配结果仍用于后续链路判断。
         const candidates = await this.findProfiles(request, module)
         if (!candidates.length) {
             throw new Error(`没有找到 ${module} 对应的 SSH 服务器配置，请提供 server 或先配置该模块服务器。`)
         }
-        const batchCount = Math.ceil(candidates.length / QUERY_CONCURRENCY)
         const matchedOutputs: string[] = []
-        for (let batch = 0; batch < batchCount; batch++) {
-            const slice = candidates.slice(batch * QUERY_CONCURRENCY, (batch + 1) * QUERY_CONCURRENCY)
-            emit({ phase: 'opening', module, logType, command: step.command, message: `并行连接 ${slice.length} 台 ${module} 候选（第 ${batch + 1}/${batchCount} 批，共 ${candidates.length} 台）。` })
-            const results = await Promise.all(slice.map(async (profile, index) => {
-                try {
-                    await sleep(index * 600)
-                    const tab = await this.getOrOpenTab(profile, profile.name ?? module)
-                    const output = await this.executeCommand(tab, step.command)
-                    return { profile, output, error: null as string|null }
-                } catch (e: any) {
-                    return { profile, output: '', error: e?.message ?? String(e) }
-                }
-            }))
-            for (const r of results) {
-                if (r.error) {
-                    emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `${r.profile.name ?? module} 执行失败（${r.error}）。` })
-                } else {
-                    const records = this.records(r.output, request.cid)
-                    // 每个窗口都回传独立输出；匹配结果另行汇总用于后续路由判断。
-                    emit({
-                        phase: 'parsing',
-                        module,
-                        logType,
-                        command: step.command,
-                        output: r.output,
-                        message: records.length
-                            ? `${r.profile.name ?? module} 已完成并匹配到 ${records.length} 条记录。`
-                            : `${r.profile.name ?? module} 已完成，但没有匹配记录。`,
-                    })
-                    if (records.length) {
-                        matchedOutputs.push(`===== ${r.profile.name ?? module} =====\n${r.output}`)
-                    }
-                }
+        const slice = candidates
+        emit({ phase: 'opening', module, logType, command: step.command, message: `并行连接全部 ${slice.length} 台 ${module} 候选，逐窗口监听执行结果。` })
+        const results = await Promise.all(slice.map(async (profile, index) => {
+            const server = profile.name ?? module
+            try {
+                await sleep(index * 600)
+                const tab = await this.getOrOpenTab(profile, server)
+                const output = await this.executeCommand(tab, step.command)
+                const records = this.records(output, request.cid)
+                // 每个窗口完成即回传独立输出，不等待其他窗口；匹配结果另行汇总用于后续路由判断。
+                emit({
+                    phase: 'parsing', module, logType, command: step.command, output, server,
+                    message: records.length ? `${server} 已完成并匹配到 ${records.length} 条记录。` : `${server} 已完成，但没有匹配记录。`,
+                })
+                return { profile, output, error: null as string|null, records }
+            } catch (e: any) {
+                const error = e?.message ?? String(e)
+                emit({ phase: 'parsing', module, logType, command: step.command, output: '', server, message: `${server} 执行失败（${error}）。` })
+                return { profile, output: '', error, records: [] as ParsedRecord[] }
             }
-            if (matchedOutputs.length) {
-                const merged = matchedOutputs.join('\n')
-                emit({ phase: 'parsing', module, logType, command: step.command, output: merged, message: `已在 ${matchedOutputs.length} 台服务器匹配到 ${module}/${logType} 记录。` })
-                return merged
+        }))
+        for (const r of results) {
+            if (!r.error && r.records.length) {
+                matchedOutputs.push(`===== ${r.profile.name ?? module} =====\n${r.output}`)
             }
-            emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `第 ${batch + 1} 批 ${slice.length} 台均无匹配记录。` })
+        }
+        if (matchedOutputs.length) {
+            const merged = matchedOutputs.join('\n')
+            emit({ phase: 'parsing', module, logType, command: step.command, output: merged, message: `已在 ${matchedOutputs.length} 台服务器匹配到 ${module}/${logType} 记录。` })
+            return merged
         }
         emit({ phase: 'parsing', module, logType, command: step.command, output: '', message: `全部 ${candidates.length} 台候选均无 ${module}/${logType} 匹配记录。` })
         return ''
@@ -357,7 +361,7 @@ export class LogQueryOrchestrator {
         }
         const openIds = new Set(this.terminalContext.getOpenTerminalTabs().map(t => (t as any).profile?.id))
         const matched = profiles
-            .filter(p => p.type === 'ssh' && this.profileMatchesModule(p, module))
+            .filter(p => p.type === 'ssh' && this.profileMatchesSite(p) && this.profileMatchesModule(p, module))
             .map(p => ({ p, open: openIds.has(p.id) ? 0 : 1, site: siteRank(p.group ? this.profilesService.resolveProfileGroupPath(p.group).join('/') : '') }))
             .sort((a, b) => (a.open - b.open) || (a.site - b.site))
             .map(x => x.p)
@@ -365,6 +369,7 @@ export class LogQueryOrchestrator {
 
         // profile 名称/分组未包含模块名时，已打开的 SSH 窗口仍是可靠候选。
         // 这解决了 sdp 等模块使用 IP/主机名命名、但用户已经手动打开窗口的场景。
+        if (module === 'rasv2') { return [] }
         const openProfiles = this.terminalContext.getOpenTerminalTabs()
             .map(tab => (tab as any).profile as PartialProfile<Profile>|undefined)
             .filter((p): p is PartialProfile<Profile> => !!p && (p.type === 'ssh' || !!(p.options as any)?.host))
@@ -384,6 +389,11 @@ export class LogQueryOrchestrator {
         if (group === key || group.endsWith('/' + key) || name === key || name.includes(key)) { return true }
         // AISHELL: 兼容"gsmd(sdp)"式括号命名——文件夹/名称以 (模块) 结尾或包含 /模块） 也算匹配
         return group.endsWith(`(${key})`) || group.includes(`/${key})`) || name.endsWith(`(${key})`)
+    }
+
+    private profileMatchesSite (profile: PartialProfile<Profile>): boolean {
+        const path = profile.group ? this.profilesService.resolveProfileGroupPath(profile.group).join('/') : ''
+        return ACTIVE_SITE_NAMES.some(site => path.includes(site))
     }
 
     private findOpenTab (profile: PartialProfile<Profile>|null): ConnectableTerminalTabComponent<any>|null {

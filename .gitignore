@@ -6,3 +6,7 @@ config.yaml.bak
 tabby/build/vc_redist.exe
 Sessions/
 Sessions-backup-securecrt-20260825/
+login.env
+服务器IP地址获取的账号密码.env
+app-bundle.js
+docs/~$*

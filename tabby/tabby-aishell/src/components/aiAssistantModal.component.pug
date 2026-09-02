@@ -30,6 +30,15 @@
                 .msg(*ngFor='let m of messages', [class.user]='m.role === "user"', [class.error]='m.error')
                     .role {{ m.role === 'user' ? 'You' : 'AI' }}
                     .content {{ m.content }}
+                    .msg-downloads(*ngIf='m.logFiles?.length')
+                        span.text-muted.me-2 日志档案:
+                        button.btn.btn-sm.btn-outline-secondary.me-1(
+                            *ngFor='let file of m.logFiles',
+                            type='button',
+                            (click)='downloadLog(file)'
+                        )
+                            i.fas.fa-download.me-1(aria-hidden='true')
+                            | {{ file.name }}
                     .msg-toolbar
                         button.btn.btn-sm.btn-link.msg-copy-btn(
                             type='button',

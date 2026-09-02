@@ -24,6 +24,8 @@ import { SecurePasswordService } from './services/securePassword.service'
 import { TemplateService } from './services/template.service'
 import { TerminalContextService } from './services/terminalContext.service'
 import { VariableSubstitutionService } from './services/variableSubstitution.service'
+import { ServerInventoryService } from './services/serverInventory.service'
+import { ServerInventoryModalComponent } from './components/serverInventoryModal.component'
 
 @NgModule({
     imports: [
@@ -36,6 +38,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
     declarations: [
         FromTemplateModalComponent,
         ManageTemplatesModalComponent,
+        ServerInventoryModalComponent,
         BatchCommandModalComponent,
         BatchPasswordModalComponent,
         AiAssistantModalComponent,
@@ -45,6 +48,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
     entryComponents: [
         FromTemplateModalComponent,
         ManageTemplatesModalComponent,
+        ServerInventoryModalComponent,
         BatchCommandModalComponent,
         BatchPasswordModalComponent,
         AiAssistantModalComponent,
@@ -54,6 +58,7 @@ import { VariableSubstitutionService } from './services/variableSubstitution.ser
     providers: [
         TemplateService,
         VariableSubstitutionService,
+        ServerInventoryService,
         BatchCommandService,
         AiService,
         TerminalContextService,
@@ -79,6 +84,8 @@ export default class AIShellModule {
 export * from './api'
 export { TemplateService } from './services/template.service'
 export { VariableSubstitutionService } from './services/variableSubstitution.service'
+export { ServerInventoryService } from './services/serverInventory.service'
+export * from './services/serverInventory.service'
 export { BatchCommandService } from './services/batchCommand.service'
 export { AiService } from './services/ai.service'
 export { TerminalContextService } from './services/terminalContext.service'
@@ -91,6 +98,7 @@ export { KeyboardBroadcastService } from './services/keyboardBroadcast.service'
 export { SecurePasswordService } from './services/securePassword.service'
 export { FromTemplateModalComponent } from './components/fromTemplateModal.component'
 export { ManageTemplatesModalComponent } from './components/manageTemplatesModal.component'
+export { ServerInventoryModalComponent } from './components/serverInventoryModal.component'
 export { BatchCommandModalComponent } from './components/batchCommandModal.component'
 export { BatchPasswordModalComponent } from './components/batchPasswordModal.component'
 export { AiAssistantModalComponent } from './components/aiAssistantModal.component'

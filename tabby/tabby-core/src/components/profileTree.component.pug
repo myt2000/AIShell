@@ -41,6 +41,12 @@
                 [attr.aria-label]='"Multi-window log analysis"|translate',
                 (click)='openAIShellModal("logAnalysis")'
             ): i.fas.fa-bars-staggered(aria-hidden='true')
+            button.btn.btn-secondary(
+                type='button',
+                [ngbTooltip]='"Get server configuration"|translate',
+                [attr.aria-label]='"Get server configuration"|translate',
+                (click)='openAIShellModal("serverInventory")'
+            ): i.fas.fa-cloud-download-alt(aria-hidden='true')
 
     input.form-control.form-control-sm.mb-1(
         type='text',

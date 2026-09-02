@@ -34,6 +34,13 @@ interface UiMessage {
     actions?: AiAction[]
     /** 动作执行状态：与 actions 下标对应 */
     executedActions?: boolean[]
+    /** 自动日志查询生成的可下载原始档案（按模块/日志类型聚合，内部保留服务器区段） */
+    logFiles?: LogDownload[]
+}
+
+interface LogDownload {
+    name: string
+    content: string
 }
 
 function newId (): string {
@@ -81,6 +88,13 @@ export class AiAssistantModalComponent extends BaseComponent {
         '2. 每个模块的日志固定在 /app/newgetui/模块名/logs 目录（模块名即树中的文件夹名，如 gsmd 的日志在 /app/newgetui/gsmd/logs）。查日志的命令必须用该绝对路径，不要依赖当前目录。\n' +
         '3. 服务器登录账号为只读账号：只能查询，不能写入或修改。生成的命令必须全部是只读命令（cat/head/tail/grep/egrep/awk/sed -n/ls/find/df/du/ps/top/netstat/ss/stat/wc/cut/sort/uniq 等），严禁包含重定向(> >>)、管道写文件、tee、touch、mkdir、rm、mv、cp、chmod、chown、kill、sed -i、vi/vim、reboot、shutdown 等任何写入或变更类操作。\n' +
         '4. 按手机号/时间查短信日志的典型方式：grep "手机号" /app/newgetui/模块名/logs/对应日期文件（先用 ls 看文件名规律再 grep 也可以分两步）。\n\n' +
+        '【当前自动日志查询范围】\n' +
+        '只自动查询杭州三墩、北京马驹桥、无锡国际三个机房；业务范围为推送、个验、短信。推送查询的输入优先收集 appid、task_id、cid 和时间点，已有 task_id 时不要要求用户重复提供。\n' +
+        '【推送规则】\n' +
+        '入口按 task_id 前缀定位 ras/rasv2 的 rp-message（RASS 通常从 rasv2 开始），再查 spd/psc/os/mmp 的 rp-bi。初始 rp-bi 第4字段为 1 表示在线；第4字段为 0 且第10字段为 0 也按在线处理；第10字段为 SDP 表示离线并进入 sdp/rp-command；第10字段为 OMP 表示进入 omp/rp-bi；第4字段既不是 0 也不是 1 时只保留原始日志并结束。ttl=0 时，即使在线分支也允许回查 rp-message。\n' +
+        '在线链路：入口/下发模块 → im/rp-message（第9字段识别 cm）→ cm/rp-message → as/rp-message。离线 SDP：sdp/rp-command 第2字段包含 SUCCESS 才继续厂商模块；GTPS_HW/XM/VV/OP/MZ_SUCCESS 查对应 gtps 的 rp-bi，有记录再查 gtpr/rp-bi，无记录改查 push-result；IOS_SUCCESS 查 apn、apns/rp-bi 第2字段 ok，再查 gpmrs 和 as。离线 OMP：omp/rp-bi 第5字段单条为1则结束；多条且存在0则继续 im→cm→as；其他情况暂停并要求人工核对。\n' +
+        '【自动查询动作】\n' +
+        '涉及推送 task_id/cid 的请求只输出一个 log_query 动作，不要自行输出多条 run/open_profile 命令；系统会自动打开所有候选服务器窗口、监听每个窗口完成标记、按规则路由后续模块，并提供按模块/日志类型下载的原始档案。无法判断时必须暂停，不要把超时、无日志或字段缺失直接判定为失败。\n\n' +
         '【动作标记】你可以让用户一键执行（点按钮确认后才执行，不会自动执行）：\n' +
         '打开某文件夹下全部服务器：<<ACTION>>{"type":"open_group","group":"文件夹名或路径"}<<END>>\n' +
         '连接某台服务器：<<ACTION>>{"type":"open_profile","name":"服务器名"}<<END>>\n' +
@@ -142,7 +156,8 @@ export class AiAssistantModalComponent extends BaseComponent {
                 id: this.currentConversationId,
                 title,
                 updatedAt: Date.now(),
-                messages: this.messages.slice(-200),
+                // 原始日志不写入会话历史，避免 localStorage 膨胀；下载按钮仅在当前对话中保留。
+                messages: this.messages.slice(-200).map(message => ({ ...message, logFiles: undefined })),
             })
             window.localStorage['aishell:ai-conversations'] = JSON.stringify(list.slice(0, 50))
             this.historyList = this.loadConversations()
@@ -505,10 +520,12 @@ export class AiAssistantModalComponent extends BaseComponent {
             .map(event => `${event.module ? `${event.module}/${event.logType}: ` : ''}${event.message}`)
             .join('\n')
         if (summary) {
+            const logFiles = this.buildLogFiles(result.events)
             this.messages.push({
                 role: 'assistant',
                 content: `自动日志查询${result.status === 'finished' ? '完成' : '已暂停'}：\n${summary}`,
                 error: result.status === 'failed',
+                logFiles: logFiles.length ? logFiles : undefined,
             })
             this.persistCurrent()
             this.scrollHistoryToBottom()
@@ -550,6 +567,32 @@ export class AiAssistantModalComponent extends BaseComponent {
         }
     }
 
+    /** 将每个 SSH 窗口的原始输出归档；文件名按“模块-日志类型.log”，区段标记服务器和查询语句。 */
+    private buildLogFiles (events: Array<{ phase: string, module?: string, logType?: string, server?: string, command?: string, output?: string, message?: string }>): LogDownload[] {
+        const files = new Map<string, { name: string, sections: string[] }>()
+        for (const event of events) {
+            if (event.phase !== 'parsing' || !event.module || !event.logType || !event.server) { continue }
+            const safeModule = event.module.replace(/[^A-Za-z0-9_-]/g, '_')
+            const safeType = event.logType.replace(/[^A-Za-z0-9_-]/g, '_')
+            const key = `${safeModule}-${safeType}`
+            const file = files.get(key) ?? { name: `${key}.log`, sections: [] }
+            const output = event.output?.trim() || `(无输出) ${event.message ?? ''}`
+            file.sections.push(`===== 服务器: ${event.server} =====\n查询命令: ${event.command ?? ''}\n\n${output}`)
+            files.set(key, file)
+        }
+        return [...files.values()].map(file => ({ name: file.name, content: file.sections.join('\n\n') + '\n' }))
+    }
+
+    async downloadLog (file: LogDownload): Promise<void> {
+        const data = Buffer.from(file.content, 'utf8')
+        const transfer = await this.platform.startDownload(file.name, 0o644, data.length)
+        if (transfer) {
+            transfer.write(data)
+            transfer.close()
+            this.notifications.info(`日志已下载：${file.name}`)
+        }
+    }
+
     /** AISHELL: Codex 式观察环——命令执行后延时抓取各窗口输出自动回传给 AI 继续分析 */
     private scheduleAutoAnalyze (command: string): void {
         if (!this.autoAnalyze) { return }
@@ -558,7 +601,8 @@ export class AiAssistantModalComponent extends BaseComponent {
             const tabs = this.terminalContext.getOpenTerminalTabs()
             if (!tabs.length) { return }
             const parts: string[] = []
-            for (const tab of tabs.slice(0, 6)) {
+            // 不限制为前 6 个窗口；批量查询/执行打开多少窗口就观察多少窗口。
+            for (const tab of tabs) {
                 const output = this.terminalContext.getRecentOutput(tab, 60).trim()
                 if (output) {
                     parts.push(`--- ${tab.title} ---\n${output.slice(-1200)}`)

@@ -196,7 +196,7 @@ export class ProfileTreeComponent extends BaseComponent {
 
     // AISHELL: ===== AIShell 功能入口（模板/批量命令/AI，弹窗由 tabby-aishell 提供） =====
 
-    openAIShellModal (which: 'fromTemplate'|'manageTemplates'|'batchCommand'|'aiAssistant'|'logAnalysis'|'batchPassword', setup?: (instance: any) => void): void {
+    openAIShellModal (which: 'fromTemplate'|'manageTemplates'|'batchCommand'|'aiAssistant'|'logAnalysis'|'batchPassword'|'serverInventory', setup?: (instance: any) => void): void {
         try {
             const aishell = window['nodeRequire']('tabby-aishell')
             const components = {
@@ -206,6 +206,7 @@ export class ProfileTreeComponent extends BaseComponent {
                 aiAssistant: aishell.AiAssistantModalComponent,
                 logAnalysis: aishell.LogAnalysisModalComponent,
                 batchPassword: aishell.BatchPasswordModalComponent,
+                serverInventory: aishell.ServerInventoryModalComponent,
             }
             const component = components[which]
             if (!component) {

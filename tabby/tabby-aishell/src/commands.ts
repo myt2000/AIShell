@@ -7,6 +7,7 @@ import { BatchCommandModalComponent } from './components/batchCommandModal.compo
 import { FromTemplateModalComponent } from './components/fromTemplateModal.component'
 import { LogAnalysisModalComponent } from './components/logAnalysisModal.component'
 import { ManageTemplatesModalComponent } from './components/manageTemplatesModal.component'
+import { ServerInventoryModalComponent } from './components/serverInventoryModal.component'
 
 const wandIcon = require('./icons/wand.svg')
 const broadcastIcon = require('./icons/broadcast.svg')
@@ -25,6 +26,16 @@ export class AIShellCommandProvider extends CommandProvider {
 
     async provide (): Promise<Command[]> {
         return [
+            {
+                id: 'aishell:server-inventory',
+                label: 'Get server configuration',
+                icon: wandIcon,
+                weight: -86,
+                locations: [CommandLocation.StartPage],
+                run: async () => {
+                    this.ngbModal.open(ServerInventoryModalComponent, { size: 'lg' })
+                },
+            },
             {
                 id: 'aishell:new-from-template',
                 label: 'New from template',

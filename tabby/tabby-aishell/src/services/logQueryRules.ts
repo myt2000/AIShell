@@ -25,6 +25,8 @@ export interface LogQueryStep {
 }
 
 export const LOG_MODULES: Record<string, LogModuleRule> = {
+    // 推送公共入口：先查 rasv2/rp-message，再按任务前缀进入具体下发模块。
+    rasv2: { id: 'rasv2', path: '/app/newgetui/rasv2/logs' },
     spd: { id: 'spd', path: '/app/newgetui/spd/logs' },
     psc: { id: 'psc', path: '/app/newgetui/psc/logs' },
     os: { id: 'os', path: '/app/newgetui/openservice/logs' },
@@ -109,7 +111,7 @@ export function allowedLogTypesFor (module: string): Set<string> {
  * AISHELL: 机房优先级（用户要求：杭州 → 北京马驹桥 → 无锡机房）。
  * 候选服务器按分组路径命中的优先级排序，未列出的站点排最后（保持原有顺序）。
  */
-export const SITE_PRIORITY: string[] = ['杭州', '北京马驹桥', '无锡机房']
+export const SITE_PRIORITY: string[] = ['杭州三墩', '北京马驹桥', '无锡国际']
 
 /** 分组路径的机房排序权重（越小越优先；未命中 = 尾部） */
 export function siteRank (groupPath: string): number {

@@ -1,0 +1,67 @@
+.modal-content
+    .modal-header
+        h5.modal-title
+            i.fas.fa-server.me-2
+            | 获取服务器配置
+        button.btn.btn-link.close(type='button', (click)='cancel()', [disabled]='running') ×
+    .modal-body
+        .mb-3
+            label.form-label(for='inventory-base-url') 监控平台地址
+            input#inventory-base-url.form-control(
+                type='url',
+                [(ngModel)]='baseUrl',
+                [disabled]='running',
+                placeholder='http://172.16.14.123:8080/'
+            )
+            .form-text.text-muted 将遍历全部机房、产品、模块和分页节点
+        .row.mb-3
+            .col-md-6
+                label.form-label(for='inventory-username') 监控平台账号
+                input#inventory-username.form-control(type='text', autocomplete='username', [(ngModel)]='username', [disabled]='running', placeholder='请输入平台登录账号')
+            .col-md-6
+                label.form-label(for='inventory-password') 监控平台密码
+                input#inventory-password.form-control(type='password', autocomplete='current-password', [(ngModel)]='password', [disabled]='running', placeholder='请输入平台登录密码')
+        .form-text.text-muted.mb-3 节点查询需要平台登录权限；密码不会保存到 Tabby 配置
+        .mb-3
+            label.form-label(for='inventory-page-size') 每页数量
+            input#inventory-page-size.form-control(type='number', min='1', max='500', [(ngModel)]='pageSize', [disabled]='running')
+
+        .alert.alert-info.py-2(*ngIf='running && progress')
+            .d-flex.align-items-center
+                i.fas.fa-spinner.fa-spin.me-2
+                span(*ngIf='progress.module') {{ progress.room }} / {{ progress.product }} / {{ progress.module }}，第 {{ progress.page || 1 }} / {{ progress.pages || '?' }} 页
+                span(*ngIf='!progress.module') 正在读取 {{ progress.room }}
+            .small.text-muted 已获取 {{ progress.rows }} 台
+        .alert.alert-warning.py-2(*ngIf='error') {{ error }}
+        .alert.alert-success.py-2(*ngIf='!running && rows.length') 已获取 {{ rows.length }} 台节点，可下载 CSV
+
+        .inventory-preview(*ngIf='rows.length')
+            table.table.table-sm.table-striped
+                thead
+                    tr
+                        th 机房
+                        th 产品
+                        th 模块
+                        th 节点名称
+                        th JMX 地址
+                        th 状态
+                tbody
+                    tr(*ngFor='let row of rows | slice:0:100')
+                        td {{ row.room }}
+                        td {{ row.product }}
+                        td {{ row.module }}
+                        td {{ row.name }}
+                        td {{ row.jmxIp }}:{{ row.jmxPort || '' }}
+                        td {{ row.alive ? '正常' : '异常' }}
+            .small.text-muted(*ngIf='rows.length > 100') 仅预览前 100 条，CSV 包含全部 {{ rows.length }} 条
+    .modal-footer
+        button.btn.btn-primary(type='button', [disabled]='running || syncing', (click)='crawl()')
+            i.fas.fa-cloud-download-alt.me-1
+            | {{ running ? '获取中...' : '获取全部配置' }}
+        button.btn.btn-secondary(type='button', [disabled]='!rows.length', (click)='downloadCsv()')
+            i.fas.fa-file-csv.me-1
+            | 导出 CSV
+        button.btn.btn-success(type='button', [disabled]='!rows.length || running || syncing', (click)='generateTree()')
+            i.fas.fa-folder-tree.me-1
+            | {{ syncing ? '生成中...' : '生成文件树' }}
+        button.btn.btn-secondary(type='button', (click)='running ? cancelCrawl() : cancel()') {{ running ? '停止' : '关闭' }}

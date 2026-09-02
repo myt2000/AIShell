@@ -86,7 +86,9 @@ export class Application {
         )
 
         if (!fs.existsSync(this.userPluginsPath)) {
-            fs.mkdirSync(this.userPluginsPath)
+            // Another Tabby process can create this directory between existsSync and mkdirSync.
+            // Recursive creation is idempotent and avoids aborting startup with EEXIST.
+            fs.mkdirSync(this.userPluginsPath, { recursive: true })
         }
 
         app.commandLine.appendSwitch('disable-http-cache')

@@ -12,6 +12,7 @@ import {
     allowedLogTypesFor,
     dateFromTaskId,
     initialModuleForTask,
+    isAmbiguousTaskPrefix,
     normaliseDate,
     siteRank,
 } from './logQueryRules'
@@ -71,13 +72,18 @@ export class LogQueryOrchestrator {
     static parseRequest (text: string): LogQueryRequest|null {
         // 关键词形式（task_id=xxx / 任务id: xxx）优先；其次识别裸任务号形态（RASS_0901_xxx 等）
         const keywordTask = /(?:task[_ -]?id|任务(?:id|号))\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1]
-        const shapeTask = /(?:^|[^A-Za-z0-9_-])((?:RASA|RASL|RASS|OSL|OSS|GT|MM)_\d{4}_[A-Za-z0-9_-]+)(?:$|[^A-Za-z0-9_-])/i.exec(text)?.[1]
+        const shapeTask = /(?:^|[^A-Za-z0-9_-])((?:RASA|RASL|RAST|RASS|OSL|OSS|OSA|GT|MM)_\d{4}_[A-Za-z0-9_-]+)(?:$|[^A-Za-z0-9_-])/i.exec(text)?.[1]
         const taskId = keywordTask ?? shapeTask
         if (!taskId) { return null }
-        const cid = /(?:cid|设备(?:id|标识))\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1]
-        const date = /(?:日期|date|日志日|时间点|时间|推送时间)\s*[:=：]?\s*(20\d{2}[-/.]?\d{1,2}[-/.]?\d{1,2})/i.exec(text)?.[1]
+        const cidRaw = /(?:cid|设备(?:id|标识))\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1]
+        const cid = cidRaw && /^[a-f0-9]{32}$/.test(cidRaw) ? cidRaw : undefined
+        const timePoint = /(?:推送时间点|时间点|推送时间|datetime|time)\s*[:=：]?\s*(20\d{2}[-/.]\d{1,2}[-/.]\d{1,2}\s+\d{1,2}[:：]\d{2}(?:[:：]\d{2})?)/i.exec(text)?.[1]
+        const date = /(?:日期|date|日志日)\s*[:=：]?\s*(20\d{2}[-/.]?\d{1,2}[-/.]?\d{1,2})/i.exec(text)?.[1]
         const appId = /(?:appid|app[_ -]?id)\s*[:=：]?\s*([A-Za-z0-9_-]+)/i.exec(text)?.[1]
-        return { taskId, cid, date: normaliseDate(date), appId, mode: 'auto' }
+        const relativeTime = /(?:今天|今日)(?:早上|上午|中午|下午|晚上|夜间)?\s*(\d{1,2})[:：](\d{2})/.exec(text)
+        const relativePoint = relativeTime ? todayTimePoint(Number(relativeTime[1]), Number(relativeTime[2]), /下午|晚上|夜间/.test(text)) : undefined
+        const parsedPoint = normaliseTimePoint(timePoint) ?? relativePoint
+        return { taskId, cid, date: normaliseDate(date) ?? (parsedPoint ? parsedPoint.slice(0, 10).replace(/-/g, '') : undefined), timePoint: parsedPoint, appId, mode: 'auto' }
     }
 
     /** 确认模式：每个模块执行前的确认钩子（返回 false 表示用户跳过，暂停查询） */
@@ -94,9 +100,11 @@ export class LogQueryOrchestrator {
             this.events.next(full)
         }
 
-        const entry = initialModuleForTask(request.taskId)
+        const entry = request.entryModule ?? initialModuleForTask(request.taskId)
         if (!entry) {
-            const conclusion = `无法根据 task_id 前缀识别起始模块：${request.taskId}`
+            const conclusion = isAmbiguousTaskPrefix(request.taskId)
+                ? 'GT_ 任务可能是 psc 列表推送或 spd 全推，尚未选择起始模块。'
+                : `无法根据 task_id 前缀识别起始模块：${request.taskId}`
             emit({ phase: 'paused', message: conclusion })
             return { queryId, status: 'paused', events, conclusion }
         }
@@ -287,7 +295,7 @@ export class LogQueryOrchestrator {
 
     /** AISHELL: 启动确认用的计划预览（起始模块/服务器/首条命令） */
     async previewFirstStep (request: LogQueryRequest): Promise<{ module: string, server: string, command: string }|null> {
-        const entry = initialModuleForTask(request.taskId)
+        const entry = request.entryModule ?? initialModuleForTask(request.taskId)
         if (!entry) { return null }
         const candidates = await this.findProfiles(request, entry)
         const profile = candidates[0]
@@ -301,10 +309,18 @@ export class LogQueryOrchestrator {
     private buildCommand (request: LogQueryRequest, module: string, logType: string): string {
         const rule = LOG_MODULES[module]
         if (!rule || !allowedLogTypesFor(module).has(logType)) { throw new Error(`未配置日志模块或日志类型：${module}/${logType}`) }
-        const datePart = request.date ? `${request.date}-` : ''
         const task = this.shellQuote(request.taskId)
+        if (request.timePoint) {
+            const point = new Date(request.timePoint.replace(' ', 'T') + (request.timePoint.length === 16 ? ':00' : ''))
+            if (!Number.isNaN(point.getTime())) {
+                const start = formatShellDate(new Date(point.getTime() - 60 * 60 * 1000))
+                const end = formatShellDate(new Date(point.getTime() + 60 * 60 * 1000))
+                const cidFilter = request.cid ? ` | xargs -0 -r zgrep -H -F -- ${task} | grep -F -- ${this.shellQuote(request.cid)}` : ` | xargs -0 -r zgrep -H -F -- ${task}`
+                return `find ${this.shellQuote(rule.path)} -maxdepth 1 -type f -name '*${logType}*' -newermt ${this.shellQuote(start)} ! -newermt ${this.shellQuote(end)} -print0${cidFilter}`
+            }
+        }
+        const datePart = request.date ? `${request.date}-` : ''
         if (!request.cid) {
-            // 无 cid：按 task_id 全量匹配（排查文档 §6.2 只按任务号查询模板）
             return `zgrep -H -F -- ${task} "${rule.path}/${logType}-${datePart}"*`
         }
         const cid = this.shellQuote(request.cid)
@@ -497,4 +513,29 @@ export class LogQueryOrchestrator {
 
 function sleep (ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function normaliseTimePoint (value: string|undefined): string|undefined {
+    if (!value) { return undefined }
+    const match = /^(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\s+(\d{1,2})[:：](\d{2})(?:[:：](\d{2}))?$/.exec(value.trim())
+    if (!match) { return undefined }
+    const [, y, m, d, h, min, sec = '00'] = match
+    const date = new Date(Number(y), Number(m) - 1, Number(d), Number(h), Number(min), Number(sec))
+    if (date.getFullYear() !== Number(y) || date.getMonth() !== Number(m) - 1 || date.getDate() !== Number(d) || Number(h) > 23 || Number(min) > 59 || Number(sec) > 59) { return undefined }
+    return `${y}-${String(Number(m)).padStart(2, '0')}-${String(Number(d)).padStart(2, '0')} ${String(Number(h)).padStart(2, '0')}:${min}:${sec}`
+}
+
+function todayTimePoint (hour: number, minute: number, pm: boolean): string|undefined {
+    let h = hour
+    if (pm && h < 12) { h += 12 }
+    const now = new Date()
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, minute, 0)
+    if (h > 23 || minute > 59) { return undefined }
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(h)}:${pad(minute)}:00`
+}
+
+function formatShellDate (date: Date): string {
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }

@@ -240,6 +240,16 @@ export class ServerInventoryService {
             options.port = 22
             options.user = login.bastionUser
             options.password = login.bastionPassword
+            // 部分老服务器只提供旧版 DH KEX。russh 已支持这些算法，但 Tabby 默认未启用；
+            // 追加而不是覆盖，现代服务器仍优先使用原有安全算法。
+            options.algorithms ??= {}
+            options.algorithms.kex = [...new Set([
+                ...(options.algorithms.kex ?? []),
+                'diffie-hellman-group-exchange-sha256',
+                'diffie-hellman-group-exchange-sha1',
+                'diffie-hellman-group14-sha1',
+                'diffie-hellman-group1-sha1',
+            ])]
             options['aishell:syncSource'] = 'module-info'
             options['aishell:syncKey'] = key
             options.scripts = [

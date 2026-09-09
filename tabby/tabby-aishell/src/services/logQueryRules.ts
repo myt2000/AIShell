@@ -14,8 +14,12 @@ export interface LogQueryRequest {
     cid?: string
     appId?: string
     date?: string
+    /** 具体推送时间，格式 YYYY-MM-DD HH:mm:ss；用于前后 1 小时文件时间筛选。 */
+    timePoint?: string
     server?: string
     mode?: 'auto' | 'confirm'
+    /** GT_ 任务需要用户在 psc（列表推送）与 spd（全推）之间确认。 */
+    entryModule?: string
 }
 
 export interface LogQueryStep {
@@ -51,11 +55,13 @@ export const LOG_MODULES: Record<string, LogModuleRule> = {
 
 export const INITIAL_MODULES: Record<string, string> = {
     RASA: 'spd',
-    GT: 'spd',
+    // GT_ 同时用于个推后台列表推送和全推，默认不应猜测；由界面确认后写入 entryModule。
     RASL: 'psc',
+    RAST: 'spd',
     RASS: 'psc',
     OSL: 'os',
     OSS: 'os',
+    OSA: 'os',
     MM: 'mmp',
 }
 
@@ -122,6 +128,10 @@ export function siteRank (groupPath: string): number {
 export function initialModuleForTask (taskId: string): string|null {
     const prefix = taskId.trim().split('_', 1)[0].toUpperCase()
     return INITIAL_MODULES[prefix] ?? null
+}
+
+export function isAmbiguousTaskPrefix (taskId: string): boolean {
+    return taskId.trim().split('_', 1)[0].toUpperCase() === 'GT'
 }
 
 export function normaliseDate (value: string|undefined): string|undefined {

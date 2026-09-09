@@ -7,7 +7,7 @@ import { AiChatMessage, AiService } from '../services/ai.service'
 import { TerminalContextService } from '../services/terminalContext.service'
 import { BatchCommandService } from '../services/batchCommand.service'
 import { LogQueryOrchestrator } from '../services/logQueryOrchestrator.service'
-import { LogQueryRequest } from '../services/logQueryRules'
+import { isAmbiguousTaskPrefix, LogQueryRequest } from '../services/logQueryRules'
 import { receiptCheatSheet } from '../services/logQueryCodes'
 import { AiSettingsModalComponent } from './aiSettingsModal.component'
 import { LogAnalysisModalComponent } from './logAnalysisModal.component'
@@ -22,8 +22,10 @@ interface AiAction {
     cid?: string
     appid?: string
     date?: string
+    time_point?: string
     server?: string
     mode?: 'auto' | 'confirm'
+    entry_module?: string
 }
 
 interface UiMessage {
@@ -93,13 +95,15 @@ export class AiAssistantModalComponent extends BaseComponent {
         '【推送规则】\n' +
         '入口按 task_id 前缀定位 ras/rasv2 的 rp-message（RASS 通常从 rasv2 开始），再查 spd/psc/os/mmp 的 rp-bi。初始 rp-bi 第4字段为 1 表示在线；第4字段为 0 且第10字段为 0 也按在线处理；第10字段为 SDP 表示离线并进入 sdp/rp-command；第10字段为 OMP 表示进入 omp/rp-bi；第4字段既不是 0 也不是 1 时只保留原始日志并结束。ttl=0 时，即使在线分支也允许回查 rp-message。\n' +
         '在线链路：入口/下发模块 → im/rp-message（第9字段识别 cm）→ cm/rp-message → as/rp-message。离线 SDP：sdp/rp-command 第2字段包含 SUCCESS 才继续厂商模块；GTPS_HW/XM/VV/OP/MZ_SUCCESS 查对应 gtps 的 rp-bi，有记录再查 gtpr/rp-bi，无记录改查 push-result；IOS_SUCCESS 查 apn、apns/rp-bi 第2字段 ok，再查 gpmrs 和 as。离线 OMP：omp/rp-bi 第5字段单条为1则结束；多条且存在0则继续 im→cm→as；其他情况暂停并要求人工核对。\n' +
+        '【任务类型映射】\n' +
+        '单推：RASS_（新 API）或 OSS_（旧 API）→ psc；列表推：RASL_（新 API）、GT_（个推后台）或 OSL_（旧 API）→ psc；全推：RASA_/RAST_（新 API）、GT_（个推后台）或 OSA_（旧 API）→ spd。GT_ 同时可能是列表推或全推，不能猜测，必须先让用户选择 psc 列表推送或 spd 全推。\n' +
         '【自动查询动作】\n' +
         '涉及推送 task_id/cid 的请求只输出一个 log_query 动作，不要自行输出多条 run/open_profile 命令；系统会自动打开所有候选服务器窗口、监听每个窗口完成标记、按规则路由后续模块，并提供按模块/日志类型下载的原始档案。无法判断时必须暂停，不要把超时、无日志或字段缺失直接判定为失败。\n\n' +
         '【动作标记】你可以让用户一键执行（点按钮确认后才执行，不会自动执行）：\n' +
         '打开某文件夹下全部服务器：<<ACTION>>{"type":"open_group","group":"文件夹名或路径"}<<END>>\n' +
         '连接某台服务器：<<ACTION>>{"type":"open_profile","name":"服务器名"}<<END>>\n' +
         '在终端窗口执行命令：<<ACTION>>{"type":"run","command":"命令","targets":"current或all"}<<END>>\n' +
-        '自动查询推送日志：<<ACTION>>{"type":"log_query","task_id":"任务ID","cid":"设备CID(可选，用户给了才填)","mode":"auto"}<<END>>\n' +
+        '自动查询推送日志：<<ACTION>>{"type":"log_query","task_id":"任务ID","appid":"应用ID(可选)","cid":"32位小写设备CID(可选)","time_point":"YYYY-MM-DD HH:mm:ss(可选)","mode":"auto"}<<END>>\n' +
 'task_id 为必需参数（cid 可选：提供则精确到设备，不提供则按 task_id 全量匹配该任务的所有记录）。缺少 task_id 时才提示用户提供（建议同时给 cid/appid/推送时间/手机号），不要猜示例值。' +
         '涉及 task_id/cid 的消息下发查询时，优先只输出 log_query 动作，不要自行拼接多条 run 命令。log_query 会自动打开对应模块服务器、执行只读查询、解析结果并继续下一模块。动作标记之外不要输出其他 JSON。\n\n' +
         '【各厂商模块主查日志类型】华为(gtps-hw)/荣耀(gtps-ho)/鸿蒙(hps-hoshw)：rp-bi、rp-message、push-result、rp-broadcasting；OPPO(gtps-op)另含 rp-login；vivo(gtps-vv)：rp-bi、rp-message、push-result、rp-login；小米(gtps-xm)/魅族(gtps-mz)：rp-bi、rp-message、push-result；gtpr 主查 rp-bi；as 主查 rp-message；gpmrs 主查 gexin-bi-display；apn/apns 主查 rp-bi、rp-logout。\n' +
@@ -274,6 +278,14 @@ export class AiAssistantModalComponent extends BaseComponent {
             const answer = await this.ai.chat(this.buildChatMessages(prompt))
             const { content, actions } = this.parseActions(answer)
             const detected = LogQueryOrchestrator.parseRequest(prompt)
+            const generatedLogAction = actions.find(action => action.type === 'log_query')
+            if (detected && generatedLogAction) {
+                // AI 可能只输出 task_id/cid，补回用户原文中的时间点、appid 等结构化参数。
+                generatedLogAction.cid ??= detected.cid
+                generatedLogAction.appid ??= detected.appId
+                generatedLogAction.date ??= detected.date
+                generatedLogAction.time_point ??= detected.timePoint
+            }
             // AI 未输出结构化动作时，使用本地参数识别兜底，避免退化为手工逐条执行。
             if (detected && !actions.some(action => action.type === 'log_query')) {
                 actions.push(this.requestToAction(detected))
@@ -440,9 +452,23 @@ export class AiAssistantModalComponent extends BaseComponent {
                 taskId,
                 cid,
                 appId: action.appid,
-                date: action.date,
+                date: action.date?.split(/[ T]/)[0],
+                timePoint: action.time_point ?? (action.date?.includes(' ') || action.date?.includes('T') ? action.date.replace('T', ' ') : undefined),
                 server: action.server,
                 mode: action.mode ?? 'auto',
+                entryModule: action.entry_module,
+            }
+            if (isAmbiguousTaskPrefix(taskId) && !request.entryModule) {
+                const choice = await this.platform.showMessageBox({
+                    type: 'warning',
+                    message: 'GT_ 任务类型需要确认',
+                    detail: '请选择该任务的推送类型，系统将据此选择起始日志模块。',
+                    buttons: ['psc：列表推送', 'spd：全推', '取消'],
+                    defaultId: 0,
+                    cancelId: 2,
+                })
+                if (choice.response === 2) { return }
+                request.entryModule = choice.response === 0 ? 'psc' : 'spd'
             }
             // 启动确认（自动模式同样必须确认一次，见规范 §11）
             const preview = await this.logQuery.previewFirstStep(request).catch(() => null)
@@ -482,8 +508,10 @@ export class AiAssistantModalComponent extends BaseComponent {
             cid: request.cid,
             appid: request.appId,
             date: request.date,
+            time_point: request.timePoint,
             server: request.server,
             mode: request.mode,
+            entry_module: request.entryModule,
         }
     }
 

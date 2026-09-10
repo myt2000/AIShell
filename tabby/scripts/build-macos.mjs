@@ -1,9 +1,23 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { build as builder } from 'electron-builder'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import * as vars from './vars.mjs'
 
 const isTag = (process.env.GITHUB_REF || '').startsWith('refs/tags/')
+const execFileAsync = promisify(execFile)
+const hasSigningCertificate = !!process.env.CSC_LINK
+
+async function adHocSign (configuration) {
+    await execFileAsync('/usr/bin/codesign', [
+        '--deep',
+        '--force',
+        '--sign', '-',
+        '--timestamp=none',
+        configuration.app,
+    ])
+}
 
 process.env.ARCH = process.env.ARCH || process.arch
 
@@ -28,8 +42,12 @@ builder({
         },
         forceCodeSigning: !!process.env.CSC_LINK,
         mac: {
-            identity: !process.env.CI || process.env.CSC_LINK ? undefined : null,
             notarize: !!process.env.APPLE_TEAM_ID,
+            // A local Apple Silicon build still needs a complete signature after
+            // Electron fuses are modified. Hardened runtime requires a real Team
+            // ID, so use a full ad-hoc signature without it for unsigned builds.
+            hardenedRuntime: hasSigningCertificate,
+            sign: hasSigningCertificate ? undefined : adHocSign,
         },
         npmRebuild: process.env.ARCH !== 'arm64',
         publish: process.env.KEYGEN_TOKEN ? [

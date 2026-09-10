@@ -285,6 +285,9 @@ export class ServerInventoryService {
         const path = nodeRequire('path')
         const processModule = nodeRequire('process')
         const candidates: string[] = []
+        if (processModule.resourcesPath) {
+            candidates.push(path.join(processModule.resourcesPath, 'login.env'))
+        }
         const addParents = (start: string) => {
             let current = start
             for (let i = 0; i < 6; i++) {

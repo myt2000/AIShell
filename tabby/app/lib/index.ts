@@ -2,12 +2,18 @@
 import { logMainError } from './errors'
 
 import { app, ipcMain, Menu, dialog } from 'electron'
+import { config as loadEnv } from 'dotenv'
+import path from 'path'
 
 // set userData Path on portable version
 import './portable'
 
 // set defaults of environment variables
-import 'dotenv/config'
+loadEnv({
+    path: app.isPackaged
+        ? path.join(process.resourcesPath, '.env')
+        : path.join(process.cwd(), '.env'),
+})
 process.env.TABBY_PLUGINS ??= ''
 process.env.TABBY_CONFIG_DIRECTORY ??= app.getPath('userData')
 

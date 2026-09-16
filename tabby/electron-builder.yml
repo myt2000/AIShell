@@ -38,8 +38,6 @@ extraResources:
 - extras
 - from: .env
   to: .env
-- from: ../login.env
-  to: login.env
 asarUnpack:
 - 'dist/*.map'
 - node_modules/keytar/build/Release/*.node

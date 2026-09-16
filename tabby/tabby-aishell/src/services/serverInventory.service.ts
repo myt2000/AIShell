@@ -284,7 +284,16 @@ export class ServerInventoryService {
         const fs = nodeRequire('fs')
         const path = nodeRequire('path')
         const processModule = nodeRequire('process')
+        const osModule = nodeRequire('os')
         const candidates: string[] = []
+        // AISHELL: 机器级凭据位（安装版应用目录旁无法放文件时的标准位置）：
+        // 1) Tabby 配置目录（TABBY_CONFIG_DIRECTORY，主进程注入）；2) ~/.aishell/。
+        // 明文凭据不随安装包分发（electron-builder extraResources 已移除 login.env），
+        // 需要时手动放置到上述任一位置。
+        if (processModule.env?.TABBY_CONFIG_DIRECTORY) {
+            candidates.push(path.join(processModule.env.TABBY_CONFIG_DIRECTORY, 'login.env'))
+        }
+        candidates.push(path.join(osModule.homedir(), '.aishell', 'login.env'))
         if (processModule.resourcesPath) {
             candidates.push(path.join(processModule.resourcesPath, 'login.env'))
         }
@@ -300,7 +309,7 @@ export class ServerInventoryService {
         addParents(processModule.cwd())
         addParents(path.dirname(processModule.execPath))
         const file = candidates.find(candidate => fs.existsSync(candidate))
-        if (!file) { throw new Error('未找到 login.env，请将它放在项目根目录或 Tabby 免安装目录上级。') }
+        if (!file) { throw new Error('未找到 login.env。请将其放置到：~/.aishell/login.env、Tabby 配置目录、免安装版上级目录或项目根目录（凭据不会随安装包分发）。') }
         const values: Record<string, string> = {}
         for (const raw of String(fs.readFileSync(file, 'utf8')).replace(/^\ufeff/, '').split(/\r?\n/)) {
             const line = raw.trim()

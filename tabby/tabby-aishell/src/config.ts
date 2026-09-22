@@ -26,6 +26,16 @@ export class AIShellConfigProvider extends ConfigProvider {
                 stripAnsi: true,
                 addTimestamps: false,
             },
+            /** AISHELL: 服务器清单同步的非敏感配置；三密码存系统凭据管理器（SecurePasswordService），
+             * login.env 文件在首次打开同步弹窗时自动迁移进来 */
+            inventory: {
+                baseUrl: 'http://172.16.14.123:8080/',
+                platformUser: '',
+                bastionUser: '',
+                targetUser: '',
+                bastionHosts: { hzsd: '', bjmjq: '', wxgj: '' },
+                migrated: false,
+            },
         },
     }
 }

@@ -5,23 +5,62 @@
             | 获取服务器配置
         button.btn.btn-link.close(type='button', (click)='cancel()', [disabled]='running') ×
     .modal-body
-        .mb-3
-            label.form-label(for='inventory-base-url') 监控平台地址
-            input#inventory-base-url.form-control(
-                type='url',
-                [(ngModel)]='baseUrl',
-                [disabled]='running',
-                placeholder='http://172.16.14.123:8080/'
-            )
-            .form-text.text-muted 将遍历全部机房、产品、模块和分页节点
-        .row.mb-3
-            .col-md-6
-                label.form-label(for='inventory-username') 监控平台账号
-                input#inventory-username.form-control(type='text', autocomplete='username', [(ngModel)]='username', [disabled]='running', placeholder='请输入平台登录账号')
-            .col-md-6
-                label.form-label(for='inventory-password') 监控平台密码
-                input#inventory-password.form-control(type='password', autocomplete='current-password', [(ngModel)]='password', [disabled]='running', placeholder='请输入平台登录密码')
-        .form-text.text-muted.mb-3 节点查询需要平台登录权限；密码不会保存到 Tabby 配置
+        // AISHELL: 服务器登录配置折叠区（设置+凭据管理器，login.env 首次自动迁移）
+        .login-config-toggle.mb-2
+            button.btn.btn-sm.btn-outline-secondary(type='button', (click)='showLoginConfig = !showLoginConfig')
+                i.fas(*ngIf='!showLoginConfig', class='fa-chevron-right me-1')
+                i.fas(*ngIf='showLoginConfig', class='fa-chevron-down me-1')
+                | 服务器登录配置
+        .login-config(*ngIf='showLoginConfig')
+            .mb-3
+                label.form-label(for='inventory-base-url') 监控平台地址
+                input#inventory-base-url.form-control(
+                    type='url',
+                    [(ngModel)]='baseUrl',
+                    [disabled]='running',
+                    placeholder='http://172.16.14.123:8080/'
+                )
+                .form-text.text-muted 将遍历全部机房、产品、模块和分页节点
+            .row.mb-2
+                .col-md-6
+                    label.form-label(for='inventory-username') 监控平台账号
+                    input#inventory-username.form-control(type='text', autocomplete='username', [(ngModel)]='username', [disabled]='running')
+                .col-md-6
+                    label.form-label(for='inventory-password') 监控平台密码
+                    input#inventory-password.form-control(type='password', autocomplete='new-password', [(ngModel)]='password', [disabled]='running')
+            .row.mb-2
+                .col-md-6
+                    label.form-label(for='inventory-bastion-user') 堡垒机用户名
+                    input#inventory-bastion-user.form-control(type='text', autocomplete='off', [(ngModel)]='bastionUser', [disabled]='running')
+                .col-md-6
+                    label.form-label(for='inventory-bastion-password') 堡垒机密码
+                    input#inventory-bastion-password.form-control(type='password', autocomplete='new-password', [(ngModel)]='bastionPassword', [disabled]='running')
+            .row.mb-2
+                .col-md-6
+                    label.form-label(for='inventory-target-user') 目标服务器用户名
+                    input#inventory-target-user.form-control(type='text', autocomplete='off', [(ngModel)]='targetUser', [disabled]='running')
+                .col-md-6
+                    label.form-label(for='inventory-target-password') 目标服务器密码
+                    input#inventory-target-password.form-control(type='password', autocomplete='new-password', [(ngModel)]='targetPassword', [disabled]='running')
+            .row.mb-2(*ngFor='let room of roomLabels')
+                .col-md-4
+                    label.form-label(for='inventory-bastion-{{room.id}}') {{ room.label }}堡垒机 IP
+                    input.form-control(
+                        type='text', autocomplete='off',
+                        [id]='"inventory-bastion-" + room.id',
+                        [(ngModel)]='bastionHosts[room.id]',
+                        [disabled]='running'
+                    )
+            .d-flex.align-items-center.mb-3
+                button.btn.btn-sm.btn-primary(type='button', [disabled]='running', (click)='saveLoginConfig()')
+                    i.fas.fa-key.me-1(aria-hidden='true')
+                    | 保存登录配置
+                .form-text.text-muted.ms-3 密码加密保存在系统凭据管理器，配置文件不含明文
+            hr
+
+        .mb-3(*ngIf='!showLoginConfig')
+            .form-text.text-muted 平台账号密码与服务器登录配置收在上方折叠区；生成文件树需要堡垒机/目标机凭据。
+
         .mb-3
             label.form-label(for='inventory-page-size') 每页数量
             input#inventory-page-size.form-control(type='number', min='1', max='500', [(ngModel)]='pageSize', [disabled]='running')

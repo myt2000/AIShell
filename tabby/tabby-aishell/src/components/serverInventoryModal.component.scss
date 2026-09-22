@@ -10,3 +10,18 @@
 .inventory-preview table {
     min-width: 680px;
 }
+
+/* AISHELL: 登录配置折叠区 */
+.login-config-toggle {
+    .btn {
+        font-size: .78rem;
+    }
+}
+
+.login-config {
+    padding: .6rem .75rem;
+    border: 1px solid var(--theme-secondary);
+    border-radius: .4rem;
+    background: var(--theme-bg);
+    margin-bottom: .6rem;
+}

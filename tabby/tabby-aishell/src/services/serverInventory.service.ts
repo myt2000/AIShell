@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core'
 import { ConfigService, PartialProfile, Profile, ProfilesService } from 'tabby-core'
 
+import { SecurePasswordService } from './securePassword.service'
+
 /** 一个节点在“模块信息”页面中的完整归属和状态。 */
 export interface ServerInventoryRow {
     roomId: string
@@ -77,6 +79,7 @@ export class ServerInventoryService {
     constructor (
         private profilesService: ProfilesService,
         private config: ConfigService,
+        private securePasswords: SecurePasswordService,
     ) { }
 
     async crawl (options: ServerInventoryOptions): Promise<ServerInventoryRow[]> {
@@ -170,7 +173,11 @@ export class ServerInventoryService {
     async syncProfiles (rows: ServerInventoryRow[]): Promise<ServerInventorySyncResult> {
         const normalRows = rows.filter(row => row.alive && row.jmxIp)
         const skippedAbnormal = rows.length - normalRows.length
-        const login = this.readLoginConfig()
+        const login = await this.readLoginConfig()
+        // AISHELL: 跳转目标机密码写入全局凭据条目（$TARGET_PASSWORD 的运行时数据源）
+        if (!await this.securePasswords.getTargetPassword()) {
+            await this.securePasswords.setTargetPassword(login.targetPassword)
+        }
         const groups = this.profilesService.getSyncProfileGroups()
         const groupMap = new Map<string, string>()
         for (const group of groups) {
@@ -239,7 +246,8 @@ export class ServerInventoryService {
             options.host = bastionHost
             options.port = 22
             options.user = login.bastionUser
-            options.password = login.bastionPassword
+            // AISHELL: 堡垒机密码入系统凭据管理器，配置零明文（连接时 sshTab 自动注入）
+            await this.securePasswords.setSshPassword(bastionHost, 22, login.bastionUser, login.bastionPassword)
             // 部分老服务器只提供旧版 DH KEX。russh 已支持这些算法，但 Tabby 默认未启用；
             // 追加而不是覆盖，现代服务器仍优先使用原有安全算法。
             options.algorithms ??= {}
@@ -255,7 +263,8 @@ export class ServerInventoryService {
             options.scripts = [
                 { expect: 'Clone last session', send: 'n', flexible: true },
                 { expect: '$', send: `ssh ${login.targetUser}@${row.jmxIp}`, flexible: true },
-                { expect: 'assword[:：]', isRegex: true, send: login.targetPassword, secret: true },
+                // AISHELL: 跳转密码以 $TARGET_PASSWORD 变量引用（连接时从凭据管理器注入）
+                { expect: 'assword[:：]', isRegex: true, send: '$TARGET_PASSWORD', secret: true },
                 { expect: '$', send: `cd /app/newgetui/${row.module}/logs` },
             ]
             const profile: any = {
@@ -278,7 +287,32 @@ export class ServerInventoryService {
     }
 
     /** 从项目根目录或免安装版附近读取 login.env，不在日志或界面中输出密码。 */
-    private readLoginConfig (): { bastionUser: string, bastionPassword: string, targetUser: string, targetPassword: string, bastionHosts: Record<string, string> } {
+    /** AISHELL: 从设置读取登录配置（配置 + 凭据管理器三密码）；任一密码或全部堡垒机 IP 缺失返回 null */
+    private async readLoginSettings (): Promise<{ bastionUser: string, bastionPassword: string, targetUser: string, targetPassword: string, bastionHosts: Record<string, string> }|null> {
+        const inventory = (this.config.store as any).aishell?.inventory
+        if (!inventory) { return null }
+        const [bastionPassword, targetPassword] = await Promise.all([
+            this.securePasswords.getInventoryPassword('bastion'),
+            this.securePasswords.getInventoryPassword('target'),
+        ])
+        if (!inventory.bastionUser || !inventory.targetUser || !bastionPassword || !targetPassword) { return null }
+        const hosts: Record<string, string> = {}
+        let anyHost = false
+        for (const [roomId, name] of Object.entries(ROOM_NAMES)) {
+            const host = inventory.bastionHosts?.[roomId]
+            if (host) { hosts[roomId] = host; hosts[name] = host; anyHost = true }
+        }
+        if (!anyHost) { return null }
+        return {
+            bastionUser: inventory.bastionUser,
+            bastionPassword,
+            targetUser: inventory.targetUser,
+            targetPassword,
+            bastionHosts: hosts,
+        }
+    }
+
+    private async readLoginConfig (): Promise<{ bastionUser: string, bastionPassword: string, targetUser: string, targetPassword: string, bastionHosts: Record<string, string> }> {
         const nodeRequire = window['nodeRequire']
         if (!nodeRequire) { throw new Error('当前运行环境无法读取 login.env，请使用免安装版启动。') }
         const fs = nodeRequire('fs')
@@ -308,8 +342,11 @@ export class ServerInventoryService {
         }
         addParents(processModule.cwd())
         addParents(path.dirname(processModule.execPath))
+        // AISHELL: 设置（aishell.inventory + 凭据管理器）优先；密码或堡垒机 IP 缺失时回落 login.env 文件
+        const settings = await this.readLoginSettings()
+        if (settings) { return settings }
         const file = candidates.find(candidate => fs.existsSync(candidate))
-        if (!file) { throw new Error('未找到 login.env。请将其放置到：~/.aishell/login.env、Tabby 配置目录、免安装版上级目录或项目根目录（凭据不会随安装包分发）。') }
+        if (!file) { throw new Error('未获取到服务器登录配置。请在「获取服务器配置」弹窗的登录配置区填写并保存，或放置 login.env（~/.aishell/ 或 Tabby 配置目录）。') }
         const values: Record<string, string> = {}
         for (const raw of String(fs.readFileSync(file, 'utf8')).replace(/^\ufeff/, '').split(/\r?\n/)) {
             const line = raw.trim()

@@ -101,10 +101,10 @@ input {
         text-decoration: none;
         color: inherit;
         /* AISHELL: 固定紧凑行距，不随 --spaciness 平方放大，避免树整体稀疏 */
-        padding: .2rem 0;
+        padding: .1rem 0;
         padding-right: .25rem;
         font-size: .84rem;
-        line-height: 1.35;
+        line-height: 1.25;
         border-radius: .35rem;
         cursor: pointer;
         overflow: hidden;

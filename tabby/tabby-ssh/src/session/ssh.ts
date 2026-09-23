@@ -996,7 +996,8 @@ export class SSHSession {
                     const modal = this.ngbModal.open(PromptModalComponent)
                     modal.componentInstance.prompt = 'Private key passphrase'
                     modal.componentInstance.password = true
-                    modal.componentInstance.showRememberCheckbox = true
+                    // AISHELL: 暂时隐藏私钥密码的记忆选项，保留底层存储能力便于后续恢复
+                    modal.componentInstance.showRememberCheckbox = false
 
                     const result = await modal.result.catch(() => {
                         throw new Error('Passphrase prompt cancelled')

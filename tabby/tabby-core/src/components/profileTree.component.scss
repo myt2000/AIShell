@@ -70,6 +70,10 @@ input {
             min-height: 2rem;
             padding: .35rem;
             line-height: 1;
+            /* AISHELL: 图标在按钮内水平垂直居中 */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
 
             &:focus-visible {
                 outline: 2px solid var(--theme-primary);
@@ -81,73 +85,133 @@ input {
 
 .profile-tree {
     max-height: 100%;
-    overflow-y: scroll;
+    overflow-y: auto;
     scrollbar-width: none;
 
     .fw-20 {
         width: 20px;
     }
 
-    .fas.fa-chevron-right,
-    .fas.fa-chevron-down {
-        font-size: .7rem;
-    }
-
     profile-icon {
-        width: 15px;
-        height: 15px;
+        width: 14px;
+        height: 14px;
     }
 
     .tree-item {
         text-decoration: none;
         color: inherit;
-        padding: calc(.25rem * calc(var(--spaciness) * var(--spaciness))) 0;
+        /* AISHELL: 固定紧凑行距，不随 --spaciness 平方放大，避免树整体稀疏 */
+        padding: .2rem 0;
         padding-right: .25rem;
-        border-radius: .3rem;
+        font-size: .84rem;
+        line-height: 1.35;
+        border-radius: .35rem;
         cursor: pointer;
         overflow: hidden;
         position: relative;
         display: flex;
         align-items: center;
-        // AISHELL: 多选选中态
+        transition: background-color .12s ease;
+
+        // AISHELL: 主机行的树形辅助线（连接父分组）
+        &.host-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: var(--guide-x, 10px);
+            width: 1px;
+            background: color-mix(in srgb, var(--theme-secondary-fg) 20%, transparent);
+            pointer-events: none;
+        }
+
         &.selected {
             background-color: var(--theme-primary);
             color: var(--theme-primary-fg);
+
+            &::before {
+                display: none;
+            }
+
             .text-muted {
                 color: var(--theme-primary-fg) !important;
             }
         }
+
         &:hover {
             background-color: var(--theme-secondary);
+
             .actions {
                 display: flex;
+                animation: aishell-tree-actions-in .12s ease;
+            }
+        }
+
+        // AISHELL: 分组头视觉层级：加粗、略微弱化背景对比
+        &.group-header {
+            font-weight: 600;
+
+            .tree-chevron {
+                font-size: .58rem;
+                transition: transform .15s ease;
+
+                &.expanded {
+                    transform: rotate(90deg);
+                }
+            }
+
+            .group-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
         }
 
         .actions {
             display: none;
             position: absolute;
-            right: 0;
+            right: .3rem;
+            top: 50%;
+            transform: translateY(-50%);
+            height: auto;
+            padding: 0;
             flex-direction: row;
-            gap: calc(.25rem * calc(var(--spaciness) * var(--spaciness)));
-            height: 100%;
-            padding: calc(.25rem * calc(var(--spaciness) * var(--spaciness)));
-            background: var(--theme-secondary);
+            gap: .2rem;
+
             .action {
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                height: 100%;
-                font-size: 0.6rem;
-                background-color: var(--theme-bg-more-2);
-                border-radius: .2rem;
-                padding: 0 calc(.34rem * calc(var(--spaciness) * var(--spaciness)));
+                width: 1.45rem;
+                height: 1.45rem;
+                font-size: .65rem;
+                color: var(--theme-secondary-fg);
+                background-color: color-mix(in srgb, var(--theme-bg-more-2) 88%, transparent);
+                border-radius: .3rem;
+                cursor: pointer;
+                transition: background-color .1s ease, color .1s ease;
+
                 &:hover {
                     background-color: var(--theme-primary);
-                    color: var(--theme-secondary);
+                    color: var(--theme-primary-fg);
                 }
             }
+
+            .action.drag-handle {
+                cursor: grab;
+            }
         }
+    }
+}
+
+@keyframes aishell-tree-actions-in {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(.2rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
     }
 }
 
@@ -211,7 +275,14 @@ input {
 
 /* AISHELL: 拖拽相关 */
 .group-profiles {
-    min-height: 1.1rem;
+    /* AISHELL: 空分组不再撑出大块空白；仅拖拽进行时恢复投放区高度 */
+    min-height: .3rem;
+    margin-bottom: .1rem;
+
+    &.cdk-drop-list-dragging {
+        min-height: 1.1rem;
+    }
+
     /* 拖拽悬停时高亮可放置目标 */
     &.cdk-drop-list-dragging,
     &.cdk-drop-list-receiving {

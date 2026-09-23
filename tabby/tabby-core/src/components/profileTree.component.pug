@@ -1,4 +1,5 @@
-.p-2.h-100.d-flex.flex-column
+// AISHELL: 内容层锁定面板宽度，收起/展开动画时整体滑出裁剪，避免内容被挤压变形
+.p-2.h-100.d-flex.flex-column([style.minWidth.px]='panelInternalWidth')
     // AISHELL: 主操作区，和服务器树、批量操作保持明确层级
     .aishell-actions.mb-2(role='toolbar', [attr.aria-label]='"AIShell tools"|translate')
         .aishell-actions-title
@@ -112,16 +113,15 @@
                         (cdkDragStarted)='onDragStarted()',
                         (cdkDragEnded)='onDragEnded()',
                         (click)='toggleGroupCollapse(group)',
-                        [style.paddingLeft.px]='depth * 20',
+                        [style.paddingLeft.px]='depth * 14',
                         (contextmenu)='groupContextMenu(group, $event)',
                         href='#'
                     )
                         .fw-20
-                            .fa.fa-fw.fas.fa-chevron-right.ms-1.text-muted(*ngIf='group.collapsed')
-                            .fa.fa-fw.fas.fa-chevron-down.ms-1.text-muted(*ngIf='!group.collapsed')
+                            .fa.fa-fw.fas.fa-chevron-right.tree-chevron.ms-1.text-muted([class.expanded]='!group.collapsed')
                         .fw-20
                             profile-icon.ms-1([icon]='group.icon || "far fa-folder"', [color]='group?.color')
-                        span.ms-2.me-auto {{ group.name || ("Ungrouped"|translate) }}
+                        span.group-name.ms-2.me-auto {{ group.name || ("Ungrouped"|translate) }}
                         .actions
                             .action.drag-handle
                                 .fa.fa-fw.fas.fa-grip-lines
@@ -135,7 +135,7 @@
                     [cdkDropListEnterPredicate]='canDropItem',
                     (cdkDropped)='onTreeDrop($event)'
                 )
-                    a.tree-item(
+                    a.tree-item.host-item(
                         *ngFor='let profile of group.profiles',
                         cdkDrag,
                         [cdkDragData]='{kind: "profile", profile: profile}',
@@ -145,7 +145,8 @@
                         [class.selected]='isSelected(profile)',
                         (click)='onProfileClick(profile, $event)',
                         (dblclick)='launchProfile(profile)',
-                        [style.paddingLeft.px]='(depth + 1) * 20',
+                        [style.paddingLeft.px]='depth * 14 + 20',
+                        [style.--guide-x.px]='depth * 14 + 10',
                         (contextmenu)='profileContextMenu(profile, $event)',
                         href='#'
                     )

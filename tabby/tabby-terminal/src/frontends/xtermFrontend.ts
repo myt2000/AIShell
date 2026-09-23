@@ -89,6 +89,13 @@ export class XTermFrontend extends Frontend {
     private pinnedToBottom = true
     private pendingRendererRecovery = false
     private rendererRecoveryAttempts = 0
+    // AISHELL: 侧边栏收起/展开动画期间暂停终端重排，动画结束再一次性 fit，避免文字跳动
+    private sidebarAnimating = false
+    private onSidebarAnimStart = () => { this.sidebarAnimating = true }
+    private onSidebarAnimEnd = () => {
+        this.sidebarAnimating = false
+        this.resizeHandler()
+    }
 
     private configService: ConfigService
     private hotkeysService: HotkeysService
@@ -261,6 +268,10 @@ export class XTermFrontend extends Frontend {
             doResize()
         }
         this.resizeHandler = () => {
+            // AISHELL: 侧边栏动画期间跳过重排（结束时会补一次 fit）
+            if (this.sidebarAnimating) {
+                return
+            }
             if (resizePending) {
                 return
             }
@@ -400,10 +411,16 @@ export class XTermFrontend extends Frontend {
 
         this.resizeObserver = new window['ResizeObserver'](() => this.resizeHandler())
         this.resizeObserver.observe(host)
+
+        // AISHELL: 监听侧边栏动画起止事件，动画期间冻结终端重排
+        window.addEventListener('aishell:sidebar-anim-start', this.onSidebarAnimStart)
+        window.addEventListener('aishell:sidebar-anim-end', this.onSidebarAnimEnd)
     }
 
     detach (_host: HTMLElement): void {
         window.removeEventListener('resize', this.resizeHandler)
+        window.removeEventListener('aishell:sidebar-anim-start', this.onSidebarAnimStart)
+        window.removeEventListener('aishell:sidebar-anim-end', this.onSidebarAnimEnd)
         this.resizeObserver?.disconnect()
         delete this.resizeObserver
     }

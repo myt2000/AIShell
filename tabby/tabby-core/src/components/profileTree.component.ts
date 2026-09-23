@@ -68,6 +68,22 @@ export class ProfileTreeComponent extends BaseComponent {
     toggleCollapsed (): void {
         this.collapsed = !this.collapsed
         window.localStorage.profileTreeCollapsed = this.collapsed ? '1' : '0'
+        this.applyCollapsedBodyClass()
+        // AISHELL: 通知终端暂停重排，动画期间避免文字跳动
+        window.dispatchEvent(new Event('aishell:sidebar-anim-start'))
+    }
+
+    // AISHELL: 运行时收起状态同步到 body，供标签栏补 macOS 红绿灯留白（仅 darwin 有红绿灯）
+    private applyCollapsedBodyClass (): void {
+        document.body.classList.toggle('aishell-sidebar-collapsed', this.collapsed && process.platform === 'darwin')
+    }
+
+    // AISHELL: 宽度过渡结束后通知终端恢复并补一次 fit
+    @HostListener('transitionend', ['$event'])
+    onSidebarTransitionEnd (event: TransitionEvent): void {
+        if (event.propertyName === 'width') {
+            window.dispatchEvent(new Event('aishell:sidebar-anim-end'))
+        }
     }
 
     // AISHELL: 顶栏 aishell:toggle-sidebar 按钮经 window 事件转发收起/展开（跨包解耦）
@@ -86,6 +102,8 @@ export class ProfileTreeComponent extends BaseComponent {
         private notifications: NotificationsService,
     ) {
         super()
+        // AISHELL: 初始化时同步收起状态到 body（处理刷新后仍处于收起态的情况）
+        this.applyCollapsedBodyClass()
     }
 
     async ngOnInit (): Promise<void> {

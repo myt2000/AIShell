@@ -133,6 +133,13 @@ $tab-border-radius: 4px;
     }
 }
 
+/* AISHELL: macOS 下侧边栏被运行时收起后，标签栏滑到窗口最左缘，
+   红绿灯会压住第一行按钮；补一条与 .inset 一致的留白
+   （body.aishell-sidebar-collapsed 由 profileTree 仅在 darwin 下同步） */
+:host-context(body.aishell-sidebar-collapsed) .content.tabs-on-top:not(.tabs-on-left):not(.tabs-on-right) > .tab-bar {
+    padding-left: calc(70px + 15px * var(--spaciness));
+}
+
 /* AISHELL: 标签行左右滚动箭头（浮在第二行标签行两端，避开第一行按钮区） */
 .aishell-tab-scroll {
     position: absolute;

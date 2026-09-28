@@ -10,3 +10,4 @@ login.env
 服务器IP地址获取的账号密码.env
 app-bundle.js
 docs/~$*
+.aishell-*.log

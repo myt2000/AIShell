@@ -3312,3 +3312,7 @@ msgstr "自动日志查询缺少 task_id（cid 可选，不提供则按任务号
 #: tabby-aishell/src/components/aiAssistantModal.component.ts
 msgid "(not provided — will match all records for this task)"
 msgstr "（未提供——将按任务号全量匹配该任务的所有记录）"
+
+#: tabby-core/src/tabContextMenu.ts
+msgid "Close all tabs"
+msgstr "关闭全部标签"

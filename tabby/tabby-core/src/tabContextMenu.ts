@@ -69,6 +69,18 @@ export class TabManagementContextMenu extends TabContextMenuItemProvider {
                         }
                     },
                 },
+                {
+                    // AISHELL: 关闭全部标签——直接全关不逐个确认，固定(pin)标签保留；
+                    // 复制数组再遍历（关闭过程会改 tabs），走 closeTab 留 recovery 记录可 reopen 找回
+                    label: this.translate.instant('Close all tabs'),
+                    click: () => {
+                        for (const t of [...this.app.tabs]) {
+                            if (!t.effectivelyPinned) {
+                                void this.app.closeTab(t, false, true)
+                            }
+                        }
+                    },
+                },
             ]
         } else if (tab.parent instanceof SplitTabComponent) {
             const directions: SplitDirection[] = ['r', 'b', 'l', 't']

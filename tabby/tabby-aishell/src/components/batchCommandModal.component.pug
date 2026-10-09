@@ -22,6 +22,8 @@
             textarea.form-control.command-input(
                 rows='6',
                 [(ngModel)]='commandText',
+                (keydown)='stopCommandInputEvent($event)',
+                (paste)='stopCommandInputEvent($event)',
                 placeholder='uptime\ndf -h'
             )
             .form-text.text-muted {{ 'Variables like $SERVER_IP / $SERVER_NAME are replaced per target.'|translate }}

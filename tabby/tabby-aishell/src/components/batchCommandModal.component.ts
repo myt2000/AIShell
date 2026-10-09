@@ -1,7 +1,7 @@
 import { Component } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 
-import { BaseComponent, NotificationsService, TranslateService, PlatformService } from 'tabby-core'
+import { BaseComponent, HotkeysService, NotificationsService, TranslateService, PlatformService } from 'tabby-core'
 import { ConnectableTerminalTabComponent } from 'tabby-terminal'
 
 import { BatchCommandService } from '../services/batchCommand.service'
@@ -30,6 +30,7 @@ export class BatchCommandModalComponent extends BaseComponent {
     constructor (
         public modalInstance: NgbActiveModal,
         private batch: BatchCommandService,
+        private hotkeys: HotkeysService,
         private platform: PlatformService,
         private notifications: NotificationsService,
         private translate: TranslateService,
@@ -38,7 +39,15 @@ export class BatchCommandModalComponent extends BaseComponent {
     }
 
     ngOnInit (): void {
+        // Native menu paste can bypass the textarea's DOM event path. Keep the
+        // active terminal from handling the same paste while this modal is open.
+        this.hotkeys.disable()
         this.refreshTabs()
+    }
+
+    ngOnDestroy (): void {
+        this.hotkeys.enable()
+        super.ngOnDestroy()
     }
 
     refreshTabs (): void {
@@ -67,6 +76,11 @@ export class BatchCommandModalComponent extends BaseComponent {
 
     get canRun (): boolean {
         return this.commands.length > 0 && this.checkedTabs.length > 0 && !this.running
+    }
+
+    /** Keep input and paste events inside the modal instead of forwarding them to the active terminal. */
+    stopCommandInputEvent (event: Event): void {
+        event.stopPropagation()
     }
 
     async run (): Promise<void> {

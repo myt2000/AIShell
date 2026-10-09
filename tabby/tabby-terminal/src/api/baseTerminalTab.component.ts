@@ -740,6 +740,16 @@ export class BaseTerminalTabComponent<P extends BaseTerminalProfile> extends Bas
         })
 
         this.termContainerSubscriptions.subscribe(this.frontend.input$, data => {
+            // Modal inputs can coexist with an active terminal tab. xterm may
+            // still emit paste data while its helper textarea is not focused;
+            // never forward that data when focus belongs outside this tab.
+            const activeElement = document.activeElement
+            if (document.querySelector('.modal.show')) {
+                return
+            }
+            if (activeElement && !this.element.nativeElement.contains(activeElement)) {
+                return
+            }
             this.sendInput(data)
         })
 

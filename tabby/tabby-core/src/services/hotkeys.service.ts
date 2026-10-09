@@ -37,7 +37,7 @@ export class HotkeysService {
      */
     get hotkey$ (): Observable<string> {
         return this._hotkey.pipe(filter(() => {
-            return document.querySelectorAll('input:focus').length === 0
+            return document.querySelectorAll('input:focus, textarea:focus').length === 0
         }))
     }
 

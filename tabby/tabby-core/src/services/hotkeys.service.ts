@@ -37,7 +37,9 @@ export class HotkeysService {
      */
     get hotkey$ (): Observable<string> {
         return this._hotkey.pipe(filter(() => {
-            return document.querySelectorAll('input:focus, textarea:focus').length === 0
+            // xterm uses a hidden textarea for terminal keyboard input. It must
+            // retain terminal hotkeys such as Ctrl+C while form inputs do not.
+            return document.querySelectorAll('input:focus, textarea:focus:not(.xterm-helper-textarea)').length === 0
         }))
     }
 
